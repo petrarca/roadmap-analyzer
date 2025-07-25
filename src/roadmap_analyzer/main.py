@@ -1,3 +1,4 @@
+import sys
 from datetime import date, datetime, timedelta
 
 import numpy as np
@@ -34,10 +35,15 @@ st.markdown("Analyze project timelines with Monte Carlo simulation to assess on-
 # Sidebar for configuration
 st.sidebar.header("⚙️ Configuration")
 
+# Get default file path from command line arguments if provided
+default_file_path = ""
+if len(sys.argv) > 1:
+    default_file_path = sys.argv[1]
+
 # File path input with on_change detection
 file_path = st.sidebar.text_input(
     "Excel File Path",
-    value="project_roadmap.xlsx",
+    value=default_file_path,
     help="Path to the Excel file containing project data",
     key="file_path_input",  # Add a key for state management
 )
@@ -58,8 +64,8 @@ num_simulations = st.sidebar.selectbox(
     help="More simulations = more accurate results but slower processing",
 )
 
-# Start date
-start_date = st.sidebar.date_input("Project Start Date", value=datetime(2025, 7, 24), help="When the projects will begin")
+# Start date - use today's date as default
+start_date = st.sidebar.date_input("Project Start Date", value=datetime.now().date(), help="When the projects will begin")
 
 # Add a separator in the sidebar
 st.sidebar.markdown("---")
@@ -380,11 +386,43 @@ def create_probability_chart(stats):
 
 # Main app
 def main():
-    # Load data
+    # Check if file path is empty
+    if not file_path.strip():
+        st.info("👋 Welcome! Please enter an Excel file path in the sidebar to load your project data.")
+
+        # Show example format
+        st.subheader("📋 Expected Excel Format:")
+        example_df = pd.DataFrame(
+            {
+                "Position": [1, 2, 3],
+                "Initiative": ["Project A", "Project B", "Project C"],
+                "Due date": ["30/11/2025", "30/11/2025", "30/05/2026"],
+                "Dependency": [None, 1, None],
+                "Best": [2400, 250, 1400],
+                "Most likely": [2832, 295, 1652],
+                "Worst": [3120, 325, 1820],
+            }
+        )
+        st.dataframe(example_df)
+
+        # Add some helpful instructions
+        st.markdown("""
+        ### 🚀 Getting Started
+        1. Enter the path to your Excel file in the sidebar
+        2. Click 'Reload Data' to load your data
+        3. Adjust the configuration settings as needed
+        4. Click 'Run Monte Carlo Simulation' to analyze your project timeline
+        
+        You can also start the app with a file path: `streamlit run src/roadmap_analyzer/main.py -- your_file.xlsx`
+        or use the task runner: `task run -- your_file.xlsx`
+        """)
+        return
+
+    # Load data if file path is provided
     df = load_project_data(file_path)
 
     if df is None:
-        st.info("Please check the file path and ensure the Excel file exists with the correct format.")
+        st.error(f"Could not load file: {file_path}. Please check that the file exists and has the correct format.")
 
         # Show expected format
         st.subheader("Expected Excel Format:")
@@ -549,4 +587,5 @@ def main():
 
 
 if __name__ == "__main__":
+    # Command line arguments are automatically handled above
     main()

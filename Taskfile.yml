@@ -36,7 +36,7 @@ tasks:
   run:
     desc: Run the Streamlit application
     cmds:
-      - .venv/bin/streamlit run src/roadmap_analyzer/main.py
+      - .venv/bin/streamlit run src/roadmap_analyzer/main.py -- {{.CLI_ARGS}}
 
   clean:
     desc: Clean up temporary files and build artifacts
