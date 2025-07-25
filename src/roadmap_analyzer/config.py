@@ -2,7 +2,7 @@
 
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class SimulationConfig(BaseModel):
@@ -82,11 +82,8 @@ class AppConfig(BaseModel):
     ui: UIConfig = Field(default_factory=UIConfig, description="UI settings")
     data: DataConfig = Field(default_factory=DataConfig, description="Data processing settings")
 
-    class Config:
-        """Pydantic configuration."""
-
-        validate_assignment = True
-        extra = "forbid"
+    # Pydantic configuration
+    model_config = ConfigDict(validate_assignment=True, extra="forbid")
 
 
 # Global configuration instance

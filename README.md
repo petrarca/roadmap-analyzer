@@ -36,6 +36,28 @@ Or directly with:
 uv run -m streamlit run src/roadmap_analyzer/main.py
 ```
 
+## Simulation Methodology
+
+The application uses Monte Carlo simulation to predict project completion dates based on effort estimates and capacity constraints. Key principles include:
+
+- **Working Days**: Only weekdays (Monday-Friday) are considered working days
+- **Capacity Management**: Capacity is evenly distributed across working days in a quarter
+- **Effort Distribution**: Uses triangular distribution (Best, Likely, Worst estimates)
+- **Dependencies**: Respects work item dependencies in scheduling
+- **Statistical Analysis**: Calculates P10, P50, P90 dates and on-time probabilities
+
+### Detailed Documentation
+
+For comprehensive information about the simulation methodology, including:
+- Technical implementation details
+- Capacity calculation formulas
+- Date calculation rules
+- Statistical analysis methods
+
+Please refer to the **[Simulation Details Documentation](docs/simulation_details.md)**.
+
+This documentation provides a deep dive into how the Monte Carlo simulation works, which is valuable for understanding the results and customizing the simulation parameters.
+
 ## Development
 
 ### Available Tasks

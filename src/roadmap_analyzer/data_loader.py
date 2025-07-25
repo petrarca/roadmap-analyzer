@@ -85,12 +85,12 @@ def convert_to_work_items(df: pd.DataFrame, config: AppConfig) -> List[WorkItem]
             dependency = row["Dependency"]
             if pd.isna(dependency):
                 dependency = None
-            
+
             # Handle optional Start date field
             start_date = row.get("Start date")
             if pd.isna(start_date):
                 start_date = None
-            
+
             # Handle optional Priority field
             priority = row.get("Priority")
             if pd.isna(priority):

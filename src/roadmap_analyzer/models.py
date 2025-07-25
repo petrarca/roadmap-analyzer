@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class WorkItem(BaseModel):
@@ -57,15 +57,12 @@ class WorkItem(BaseModel):
             raise ValueError("Work item cannot depend on itself")
         return v
 
-    class Config:
-        """Pydantic configuration."""
-
-        # Allow field aliases for Excel column names
-        populate_by_name = True
-        # Use enum values for serialization
-        use_enum_values = True
-        # Validate assignments
-        validate_assignment = True
+    # Pydantic configuration
+    model_config = ConfigDict(
+        populate_by_name=True,  # Allow field aliases for Excel column names
+        use_enum_values=True,  # Use enum values for serialization
+        validate_assignment=True,  # Validate assignments
+    )
 
     def __str__(self) -> str:
         """String representation of the work item."""
@@ -73,10 +70,14 @@ class WorkItem(BaseModel):
 
     def __repr__(self) -> str:
         """Detailed string representation."""
+        # Format dates safely with proper null checking
+        due_date_str = self.due_date.strftime("%Y-%m-%d") if hasattr(self.due_date, "strftime") else str(self.due_date)
+        start_date_str = self.start_date.strftime("%Y-%m-%d") if self.start_date and hasattr(self.start_date, "strftime") else None
+
         return (
             f"WorkItem(position={self.position}, initiative='{self.initiative}', "
             f"estimates=({self.best_estimate}, {self.most_likely_estimate}, {self.worst_estimate}), "
-            f"due_date={self.due_date.strftime('%Y-%m-%d')}, start_date={self.start_date.strftime('%Y-%m-%d') if self.start_date else None}, "
+            f"due_date={due_date_str}, start_date={start_date_str}, "
             f"priority={self.priority}, dependency={self.dependency})"
         )
 

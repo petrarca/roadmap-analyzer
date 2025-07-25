@@ -1,6 +1,7 @@
 """Utility functions for the roadmap analyzer."""
 
 from datetime import date, timedelta
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -70,3 +71,20 @@ def get_quarter_from_date(date_obj):
     year = date_obj.year
     quarter = (date_obj.month - 1) // 3 + 1
     return f"{year}-Q{quarter}"
+
+
+def is_working_day(date_obj: Union[date, pd.Timestamp]) -> bool:
+    """Check if a date is a working day (Monday-Friday).
+
+    Args:
+        date_obj: The date to check
+
+    Returns:
+        True if the date is a working day (Monday-Friday), False otherwise
+    """
+    # Convert pandas Timestamp to date if needed
+    if hasattr(date_obj, "date") and callable(getattr(date_obj, "date")):
+        date_obj = date_obj.date()
+
+    # Monday = 0, Friday = 4, Saturday = 5, Sunday = 6
+    return date_obj.weekday() < 5

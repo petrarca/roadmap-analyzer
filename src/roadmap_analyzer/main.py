@@ -1,5 +1,5 @@
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -9,7 +9,7 @@ import streamlit as st
 from roadmap_analyzer.config import APP_CONFIG
 from roadmap_analyzer.data_loader import load_work_items
 from roadmap_analyzer.simulation import analyze_results, calculate_start_dates, run_monte_carlo_simulation
-from roadmap_analyzer.utils import convert_to_date
+from roadmap_analyzer.utils import convert_to_date, is_working_day
 
 # Page configuration using config model
 st.set_page_config(page_title=APP_CONFIG.ui.page_title, page_icon=APP_CONFIG.ui.page_icon, layout=APP_CONFIG.ui.layout)
@@ -55,6 +55,15 @@ num_simulations = st.sidebar.selectbox(
 
 # Start date - use today's date as default
 start_date = st.sidebar.date_input("Project Start Date", value=datetime.now().date(), help="When the projects will begin")
+
+# Check if the selected date is a working day
+if not is_working_day(start_date):
+    st.sidebar.warning(f"⚠️ {start_date.strftime('%Y-%m-%d')} is not a working day (weekend). Projects will start on the next working day.")
+    # Calculate the next working day
+    next_working_day = start_date
+    while not is_working_day(next_working_day):
+        next_working_day += timedelta(days=1)
+    st.sidebar.info(f"Next working day: {next_working_day.strftime('%Y-%m-%d')}")
 
 # Add a separator in the sidebar
 st.sidebar.markdown("---")
@@ -355,6 +364,13 @@ def run_simulation_workflow(work_items, capacity_per_quarter, start_date, num_si
     # Set up progress tracking
     progress_bar = st.progress(0)
     status_text = st.empty()
+
+    # Ensure start_date is a working day
+    if not is_working_day(start_date):
+        original_date = start_date
+        while not is_working_day(start_date):
+            start_date += timedelta(days=1)
+        st.info(f"Adjusted start date from {original_date.strftime('%Y-%m-%d')} (weekend) to {start_date.strftime('%Y-%m-%d')} (next working day)")
 
     def update_progress(progress, message):
         progress_bar.progress(progress)
