@@ -6,14 +6,16 @@ import pandas as pd
 import streamlit as st
 from pydantic import ValidationError
 
+from roadmap_analyzer.config import AppConfig
 from roadmap_analyzer.models import WorkItem
 
 
-def load_project_data(file_path):
+def load_project_data(file_path: str, config: AppConfig) -> pd.DataFrame:
     """Load project data from Excel file.
 
     Args:
         file_path (str): Path to the Excel file containing project data
+        config (AppConfig): Application configuration
 
     Returns:
         pd.DataFrame or None: DataFrame with project data if successful, None if failed
@@ -21,8 +23,8 @@ def load_project_data(file_path):
     try:
         df = pd.read_excel(file_path)
 
-        # Ensure required columns exist
-        required_cols = ["Position", "Initiative", "Due date", "Dependency", "Best", "Most likely", "Worst"]
+        # Ensure required columns exist using config
+        required_cols = config.data.required_columns
         missing_cols = [col for col in required_cols if col not in df.columns]
 
         if missing_cols:
@@ -46,11 +48,12 @@ def load_project_data(file_path):
         return None
 
 
-def convert_to_work_items(df: pd.DataFrame) -> List[WorkItem]:
+def convert_to_work_items(df: pd.DataFrame, config: AppConfig) -> List[WorkItem]:
     """Convert DataFrame to a list of WorkItem objects.
 
     Args:
         df (pd.DataFrame): DataFrame with work item data
+        config (AppConfig): Application configuration
 
     Returns:
         List[WorkItem]: List of validated WorkItem objects
@@ -69,7 +72,7 @@ def convert_to_work_items(df: pd.DataFrame) -> List[WorkItem]:
             dependency = row["Dependency"]
             if pd.isna(dependency):
                 dependency = None
-                
+
             item_data = {
                 "position": row["Position"],
                 "initiative": row["Initiative"],
@@ -96,19 +99,20 @@ def convert_to_work_items(df: pd.DataFrame) -> List[WorkItem]:
     return work_items
 
 
-def load_work_items(file_path: str) -> List[WorkItem]:
+def load_work_items(file_path: str, config: AppConfig) -> List[WorkItem]:
     """Load and convert work items from Excel file.
 
     This is a convenience function that combines load_project_data and convert_to_work_items.
 
     Args:
         file_path (str): Path to the Excel file
+        config (AppConfig): Application configuration
 
     Returns:
         List[WorkItem]: List of validated WorkItem objects
     """
-    df = load_project_data(file_path)
-    return convert_to_work_items(df)
+    df = load_project_data(file_path, config)
+    return convert_to_work_items(df, config)
 
 
 def validate_project_data(df):

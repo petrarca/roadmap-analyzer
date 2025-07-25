@@ -1,7 +1,7 @@
 """Data models for the roadmap analyzer."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -90,3 +90,46 @@ class WorkItem(BaseModel):
         """Calculate expected effort using triangular distribution formula."""
         # Expected value of triangular distribution: (a + b + c) / 3
         return (self.best_estimate + self.most_likely_estimate + self.worst_estimate) / 3
+
+
+# Simulation Result Models
+class SimulationResult(BaseModel):
+    """Represents a single project result from a simulation run."""
+
+    name: str = Field(..., description="Name/initiative of the work item")
+    position: int = Field(..., description="Position/ID of the work item")
+    effort: float = Field(..., description="Sampled effort for this simulation run")
+    start_date: datetime = Field(..., description="Start date for the work item")
+    completion_date: datetime = Field(..., description="Calculated completion date")
+    due_date: datetime = Field(..., description="Target due date")
+    on_time: bool = Field(..., description="Whether the work item completes on time")
+
+
+class SimulationRun(BaseModel):
+    """Represents a complete simulation run with results for all work items."""
+
+    results: List[SimulationResult] = Field(..., description="Results for all work items in this simulation run")
+
+
+class SimulationStats(BaseModel):
+    """Statistics for a single work item across all simulation runs."""
+
+    position: int = Field(..., description="Position/ID of the work item")
+    due_date: datetime = Field(..., description="Target due date")
+    on_time_probability: float = Field(..., description="Probability of on-time completion (percentage)")
+    p10: datetime = Field(..., description="P10 (optimistic) completion date")
+    p50: datetime = Field(..., description="P50 (median) completion date")
+    p90: datetime = Field(..., description="P90 (pessimistic) completion date")
+    best_effort: float = Field(..., description="Best case effort estimate")
+    likely_effort: float = Field(..., description="Most likely effort estimate")
+    worst_effort: float = Field(..., description="Worst case effort estimate")
+    start_p10: Optional[datetime] = Field(None, description="P10 start date (considering dependencies)")
+    start_p50: Optional[datetime] = Field(None, description="P50 start date (considering dependencies)")
+    start_p90: Optional[datetime] = Field(None, description="P90 start date (considering dependencies)")
+
+
+class SimulationResults(BaseModel):
+    """Complete simulation results for all work items."""
+
+    runs: List[SimulationRun] = Field(..., description="All simulation runs")
+    stats: Dict[str, SimulationStats] = Field(..., description="Statistics by work item name")
