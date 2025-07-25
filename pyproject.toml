@@ -19,6 +19,7 @@ dependencies = [
 dev = [
     "ruff>=0.0.292",
     "pytest>=7.4.0",
+    "watchdog>=3.0.0",
 ]
 
 [tool.setuptools]

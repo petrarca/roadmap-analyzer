@@ -25,7 +25,13 @@ tasks:
   test:
     desc: Run tests
     cmds:
-      - .venv/bin/pytest tests
+      - |
+        if [ -d "tests" ] && [ "$(ls -A tests)" ]; then
+          .venv/bin/pytest tests
+        else
+          echo "No tests found. Skipping tests."
+          exit 0
+        fi
 
   run:
     desc: Run the Streamlit application

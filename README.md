@@ -1,6 +1,6 @@
 # Roadmap Analyzer
 
-A Streamlit application for Project Roadmap Monte Carlo Analysis to assess on-time delivery probabilities.
+A Streamlit application for Monte Carlo Analysis to assess on-time delivery probabilities for a project roadmap.
 
 ## Setup
 
@@ -8,9 +8,9 @@ This project uses [Task](https://taskfile.dev/) for managing development tasks a
 
 ### Prerequisites
 
-- Python 3.9 or higher
-- [Task](https://taskfile.dev/) - Task runner
+- Python 3.11 or higher
 - [uv](https://github.com/astral-sh/uv) - Python package installer
+- [Task](https://taskfile.dev/) - Task runner
 
 ### Installation
 
@@ -38,21 +38,41 @@ uv run -m streamlit run src/roadmap_analyzer/main.py
 
 ## Development
 
-Format and check code:
+### Available Tasks
 
+This project uses [Task](https://taskfile.dev/) to manage development workflows. Here's a complete list of available tasks:
+
+| Task | Description | Command |
+|------|-------------|--------|
+| `setup` | Create a Python virtual environment | `task setup` |
+| `install` | Install the package in development mode | `task install` |
+| `format` | Format code using ruff | `task format` |
+| `check` | Check and auto-fix code using ruff | `task check` |
+| `test` | Run tests (succeeds if no tests found) | `task test` |
+| `run` | Run the Streamlit application | `task run` |
+| `clean` | Clean up temporary files and build artifacts | `task clean` |
+| `fct` | Run format, check, and test in sequence | `task fct` |
+
+### Common Workflows
+
+**Setting up for development:**
 ```bash
-task format
-task check
+
+# Initial setup
+task setup
+task install
+
+# Start the application
+task run
 ```
 
-Run all quality checks:
-
+**Before committing code:**
 ```bash
+# Run all quality checks (format, check, test)
 task fct
 ```
 
-Clean up temporary files:
-
+**Cleaning up:**
 ```bash
 task clean
 ```
