@@ -13,6 +13,8 @@ from roadmap_analyzer.models import WorkItem
 def load_project_data(file_path: str, config: AppConfig) -> pd.DataFrame:
     """Load project data from Excel file.
 
+    Attempts to read from "Items" sheet first, falls back to default sheet if not found.
+
     Args:
         file_path (str): Path to the Excel file containing project data
         config (AppConfig): Application configuration
@@ -21,7 +23,18 @@ def load_project_data(file_path: str, config: AppConfig) -> pd.DataFrame:
         pd.DataFrame or None: DataFrame with project data if successful, None if failed
     """
     try:
-        df = pd.read_excel(file_path)
+        # First try to read from "Items" sheet
+        try:
+            df = pd.read_excel(file_path, sheet_name="Items")
+            st.info("✅ Successfully loaded data from 'Items' sheet")
+        except ValueError as e:
+            # If "Items" sheet doesn't exist, try default sheet
+            if "Worksheet named 'Items' not found" in str(e) or "Items" in str(e):
+                st.warning("⚠️ 'Items' sheet not found, trying default sheet...")
+                df = pd.read_excel(file_path)
+                st.info("✅ Successfully loaded data from default sheet")
+            else:
+                raise e
 
         # Ensure required columns exist using config
         required_cols = config.data.required_columns
@@ -72,14 +85,26 @@ def convert_to_work_items(df: pd.DataFrame, config: AppConfig) -> List[WorkItem]
             dependency = row["Dependency"]
             if pd.isna(dependency):
                 dependency = None
+            
+            # Handle optional Start date field
+            start_date = row.get("Start date")
+            if pd.isna(start_date):
+                start_date = None
+            
+            # Handle optional Priority field
+            priority = row.get("Priority")
+            if pd.isna(priority):
+                priority = None
 
             item_data = {
                 "position": row["Position"],
-                "initiative": row["Initiative"],
+                "Item": row["Item"],
                 "due_date": row["Due date"],
+                "Start date": start_date,
+                "Priority": priority,
                 "dependency": dependency,
                 "Best": row["Best"],
-                "Most likely": row["Most likely"],
+                "Likely": row["Likely"],
                 "Worst": row["Worst"],
             }
             work_item = WorkItem(**item_data)
@@ -129,7 +154,7 @@ def validate_project_data(df):
         return False
 
     # Check for required columns
-    required_cols = ["Position", "Initiative", "Due date", "Dependency", "Best", "Most likely", "Worst"]
+    required_cols = ["Position", "Item", "Due date", "Dependency", "Best", "Likely", "Worst"]
     missing_cols = [col for col in required_cols if col not in df.columns]
 
     if missing_cols:
@@ -137,7 +162,7 @@ def validate_project_data(df):
         return False
 
     # Check for valid estimation values
-    estimation_cols = ["Best", "Most likely", "Worst"]
+    estimation_cols = ["Best", "Likely", "Worst"]
     for col in estimation_cols:
         if not pd.api.types.is_numeric_dtype(df[col]):
             st.error(f"Column '{col}' must contain numeric values")
@@ -147,10 +172,10 @@ def validate_project_data(df):
             st.error(f"Column '{col}' must contain positive values")
             return False
 
-    # Check that Best <= Most likely <= Worst
-    invalid_estimates = df[(df["Best"] > df["Most likely"]) | (df["Most likely"] > df["Worst"])]
+    # Check that Best <= Likely <= Worst
+    invalid_estimates = df[(df["Best"] > df["Likely"]) | (df["Likely"] > df["Worst"])]
     if not invalid_estimates.empty:
-        st.error("Invalid estimates found: Best must be <= Most likely <= Worst")
+        st.error("Invalid estimates found: Best must be <= Likely <= Worst")
         st.error(f"Invalid rows: {invalid_estimates.index.tolist()}")
         return False
 

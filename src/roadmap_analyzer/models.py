@@ -15,32 +15,36 @@ class WorkItem(BaseModel):
 
     position: int = Field(..., description="Position/order of the work item in the roadmap", ge=1)
 
-    initiative: str = Field(..., description="Name or title of the work item/initiative", min_length=1)
+    initiative: str = Field(..., alias="Item", description="Name or title of the work item/initiative", min_length=1)
 
     due_date: datetime = Field(..., description="Target due date for the work item")
+
+    start_date: Optional[datetime] = Field(None, alias="Start date", description="Planned start date for the work item")
+
+    priority: Optional[str] = Field(None, alias="Priority", description="Priority level of the work item")
 
     dependency: Optional[int] = Field(None, description="Position number of the work item this depends on", ge=1)
 
     best_estimate: float = Field(..., alias="Best", description="Best case effort estimate in person days", gt=0)
 
-    most_likely_estimate: float = Field(..., alias="Most likely", description="Most likely effort estimate in person days", gt=0)
+    most_likely_estimate: float = Field(..., alias="Likely", description="Most likely effort estimate in person days", gt=0)
 
     worst_estimate: float = Field(..., alias="Worst", description="Worst case effort estimate in person days", gt=0)
 
     @field_validator("most_likely_estimate")
     @classmethod
     def validate_most_likely(cls, v, info):
-        """Ensure most likely estimate is >= best estimate."""
+        """Ensure likely estimate is >= best estimate."""
         if "best_estimate" in info.data and v < info.data["best_estimate"]:
-            raise ValueError("Most likely estimate must be >= best estimate")
+            raise ValueError("Likely estimate must be >= best estimate")
         return v
 
     @field_validator("worst_estimate")
     @classmethod
     def validate_worst(cls, v, info):
-        """Ensure worst estimate is >= most likely estimate."""
+        """Ensure worst estimate is >= likely estimate."""
         if "most_likely_estimate" in info.data and v < info.data["most_likely_estimate"]:
-            raise ValueError("Worst estimate must be >= most likely estimate")
+            raise ValueError("Worst estimate must be >= likely estimate")
         if "best_estimate" in info.data and v < info.data["best_estimate"]:
             raise ValueError("Worst estimate must be >= best estimate")
         return v
@@ -72,7 +76,8 @@ class WorkItem(BaseModel):
         return (
             f"WorkItem(position={self.position}, initiative='{self.initiative}', "
             f"estimates=({self.best_estimate}, {self.most_likely_estimate}, {self.worst_estimate}), "
-            f"due_date={self.due_date.date()}, dependency={self.dependency})"
+            f"due_date={self.due_date.strftime('%Y-%m-%d')}, start_date={self.start_date.strftime('%Y-%m-%d') if self.start_date else None}, "
+            f"priority={self.priority}, dependency={self.dependency})"
         )
 
     @property

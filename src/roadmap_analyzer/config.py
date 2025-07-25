@@ -62,7 +62,7 @@ class DataConfig(BaseModel):
     """Configuration for data processing."""
 
     required_columns: List[str] = Field(
-        default=["Position", "Initiative", "Due date", "Dependency", "Best", "Most likely", "Worst"], description="Required columns in Excel input"
+        default=["Position", "Item", "Due date", "Dependency", "Best", "Likely", "Worst"], description="Required columns in Excel input"
     )
     date_format: Optional[str] = Field(default=None, description="Expected date format in Excel")
     max_work_items: int = Field(default=100, ge=1, le=1000, description="Maximum number of work items allowed")

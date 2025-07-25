@@ -183,11 +183,11 @@ def show_welcome_screen():
     example_df = pd.DataFrame(
         {
             "Position": [1, 2, 3],
-            "Initiative": ["Project A", "Project B", "Project C"],
+            "Item": ["Project A", "Project B", "Project C"],
             "Due date": ["30/11/2025", "30/11/2025", "30/05/2026"],
             "Dependency": ["", "1", "2"],  # Keep as strings to avoid mixed types
             "Best": [10, 15, 8],
-            "Most likely": [15, 20, 12],
+            "Likely": [15, 20, 12],
             "Worst": [25, 30, 18],
         }
     )
@@ -219,11 +219,13 @@ def display_data_tab(work_items):
         [
             {
                 "Position": item.position,
-                "Initiative": item.initiative,
+                "Item": item.initiative,
                 "Due date": item.due_date.strftime("%Y-%m-%d"),
+                "Start date": item.start_date.strftime("%Y-%m-%d") if item.start_date else "",
+                "Priority": item.priority if item.priority else "",
                 "Dependency": item.dependency if item.dependency is not None else "",
                 "Best": item.best_estimate,
-                "Most likely": item.most_likely_estimate,
+                "Likely": item.most_likely_estimate,
                 "Worst": item.worst_estimate,
                 "Expected Effort": round(item.expected_effort, 1),
             }
@@ -390,11 +392,11 @@ def main():
         example_df = pd.DataFrame(
             {
                 "Position": [1, 2, 3],
-                "Initiative": ["Project A", "Project B", "Project C"],
+                "Item": ["Project A", "Project B", "Project C"],
                 "Due date": ["30/11/2025", "30/11/2025", "30/05/2026"],
                 "Dependency": [None, 1, None],
                 "Best": [2400, 250, 1400],
-                "Most likely": [2832, 295, 1652],
+                "Likely": [2832, 295, 1652],
                 "Worst": [3120, 325, 1820],
             }
         )
