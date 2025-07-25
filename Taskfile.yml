@@ -1,0 +1,47 @@
+version: '3'
+
+tasks:
+  setup:
+    desc: Create a Python virtual environment
+    cmds:
+      - uv venv
+
+  install:
+    desc: Install the package in development mode
+    deps: [setup]
+    cmds:
+      - uv pip install -e ".[dev]"
+
+  format:
+    desc: Format code using ruff
+    cmds:
+      - .venv/bin/ruff format src tests
+
+  check:
+    desc: Check and auto-fix code using ruff
+    cmds:
+      - .venv/bin/ruff check --fix src tests
+
+  test:
+    desc: Run tests
+    cmds:
+      - .venv/bin/pytest tests
+
+  run:
+    desc: Run the Streamlit application
+    cmds:
+      - .venv/bin/streamlit run src/roadmap_analyzer/main.py
+
+  clean:
+    desc: Clean up temporary files and build artifacts
+    cmds:
+      - rm -rf build/ dist/ .pytest_cache/ .ruff_cache/ **/__pycache__/ **/*.egg-info/
+      - find . -type d -name __pycache__ -exec rm -rf {} +
+      - find . -type f -name "*.pyc" -delete
+
+  fct:
+    desc: Run format, check, and test tasks in sequence
+    cmds:
+      - task: format
+      - task: check
+      - task: test
