@@ -1,29 +1,13 @@
 import sys
-from datetime import date, datetime, timedelta
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-
-# Helper function to convert various date types to date objects
-def _convert_to_date(date_obj):
-    """Convert various date objects to datetime.date"""
-    if hasattr(date_obj, "date") and callable(getattr(date_obj, "date")):
-        # It's a datetime or Timestamp with a date() method
-        return date_obj.date()
-    elif isinstance(date_obj, date):
-        # It's already a date object
-        return date_obj
-    else:
-        # Try to convert to string and parse
-        try:
-            return pd.to_datetime(str(date_obj)).date()
-        except (ValueError, TypeError):
-            # Return the original if all else fails
-            return date_obj
-
+from roadmap_analyzer.data_loader import load_work_items
+from roadmap_analyzer.utils import add_working_days, convert_to_date, get_quarter_from_date, triangular_random
 
 # Page configuration
 st.set_page_config(page_title="Project Roadmap Monte Carlo Analysis", page_icon="📊", layout="wide")
@@ -74,67 +58,9 @@ st.sidebar.markdown("---")
 run_simulation = st.sidebar.button("🚀 Run Monte Carlo Simulation", type="primary")
 
 
-# Load data function
-# Removed caching to allow reloading data when requested
-def load_project_data(file_path):
-    """Load project data from Excel file"""
-    try:
-        df = pd.read_excel(file_path)
-        # Ensure required columns exist
-        required_cols = ["Position", "Initiative", "Due date", "Dependency", "Best", "Most likely", "Worst"]
-        missing_cols = [col for col in required_cols if col not in df.columns]
-
-        if missing_cols:
-            st.error(f"Missing required columns: {missing_cols}")
-            return None
-
-        # Convert due dates to datetime
-        df["Due date"] = pd.to_datetime(df["Due date"])
-
-        # Clean up dependency column (convert to int or None)
-        df["Dependency"] = df["Dependency"].apply(lambda x: int(x) if pd.notna(x) else None)
-
-        return df
-    except FileNotFoundError:
-        st.error(f"File not found: {file_path}")
-        return None
-    except Exception as e:
-        st.error(f"Error loading file: {str(e)}")
-        return None
-
-
-# Triangular distribution function
-def triangular_random(min_val, mode_val, max_val):
-    """Generate random value from triangular distribution"""
-    return np.random.triangular(min_val, mode_val, max_val)
-
-
-# Add working days function
-def add_working_days(start_date, days):
-    """Add working days to a date (excluding weekends)"""
-    current = start_date
-    days_added = 0
-
-    while days_added < days:
-        current += timedelta(days=1)
-        if current.weekday() < 5:  # Monday = 0, Friday = 4
-            days_added += 1
-
-    return current
-
-
-# Get quarter from date
-def get_quarter_from_date(date):
-    """Get quarter string from date"""
-    year = date.year
-    quarter = (date.month - 1) // 3 + 1
-    return f"{year}-Q{quarter}"
-
-
 # Monte Carlo simulation function
-def run_monte_carlo_simulation(df, capacity_per_quarter, start_date, num_simulations):
-    """Run Monte Carlo simulation for project timeline"""
-    projects = df.to_dict("records")
+def run_monte_carlo_simulation(work_items, capacity_per_quarter, start_date, num_simulations):
+    """Run Monte Carlo simulation for project timeline using WorkItem objects"""
     simulation_results = []
 
     progress_bar = st.progress(0)
@@ -150,14 +76,14 @@ def run_monte_carlo_simulation(df, capacity_per_quarter, start_date, num_simulat
         completion_dates = {}
         capacity_usage = {}
 
-        for project in projects:
+        for work_item in work_items:
             # Sample effort from triangular distribution
-            effort = triangular_random(project["Best"], project["Most likely"], project["Worst"])
+            effort = triangular_random(work_item.best_estimate, work_item.most_likely_estimate, work_item.worst_estimate)
 
             # Determine start date
             project_start_date = start_date
-            if project["Dependency"] is not None:
-                dep_completion = completion_dates.get(project["Dependency"])
+            if work_item.has_dependency:
+                dep_completion = completion_dates.get(work_item.dependency)
                 if dep_completion and dep_completion > project_start_date:
                     project_start_date = dep_completion
 
@@ -192,17 +118,17 @@ def run_monte_carlo_simulation(df, capacity_per_quarter, start_date, num_simulat
                     current_date = add_working_days(current_date, days_to_add)
 
             completion_date = current_date
-            completion_dates[project["Position"]] = completion_date
+            completion_dates[work_item.position] = completion_date
 
             project_results.append(
                 {
-                    "name": project["Initiative"],
-                    "position": project["Position"],
+                    "name": work_item.initiative,
+                    "position": work_item.position,
                     "effort": effort,
                     "start_date": project_start_date,
                     "completion_date": completion_date,
-                    "due_date": project["Due date"],
-                    "on_time": _convert_to_date(completion_date) <= _convert_to_date(project["Due date"]),
+                    "due_date": work_item.due_date,
+                    "on_time": convert_to_date(completion_date) <= convert_to_date(work_item.due_date),
                 }
             )
 
@@ -215,47 +141,57 @@ def run_monte_carlo_simulation(df, capacity_per_quarter, start_date, num_simulat
 
 
 # Calculate start dates for Gantt chart
-def calculate_start_dates(stats, df):
+def calculate_start_dates(stats, work_items):
     """Calculate start dates for each project based on dependencies"""
-    # Sort projects by position to ensure dependencies are calculated first
-    sorted_projects = sorted(stats.items(), key=lambda x: x[1]["position"])
-
     # First pass: set default start dates to project start date
-    for project_name, project_stats in sorted_projects:
-        project_stats["start_p10"] = project_stats.get("start_date", pd.Timestamp("2025-07-24"))
-        project_stats["start_p50"] = project_stats.get("start_date", pd.Timestamp("2025-07-24"))
-        project_stats["start_p90"] = project_stats.get("start_date", pd.Timestamp("2025-07-24"))
+    for project_name, project_stats in stats.items():
+        default_start = pd.Timestamp(datetime.now().date())
+        project_stats["start_p10"] = project_stats.get("start_date", default_start)
+        project_stats["start_p50"] = project_stats.get("start_date", default_start)
+        project_stats["start_p90"] = project_stats.get("start_date", default_start)
+
+    # Create a lookup dictionary for work items by position
+    position_to_work_item = {item.position: item for item in work_items}
 
     # Second pass: update start dates based on dependencies
-    for project_name, project_stats in sorted_projects:
-        position = project_stats["position"]
+    for project_name, project_stats in stats.items():
+        # Find the work item for this project
+        work_item = next((item for item in work_items if item.initiative == project_name), None)
+        if not work_item or not work_item.has_dependency:
+            continue
 
-        # Find the dependency for this project in the original dataframe
-        dependency_position = None
-        for _, row in df.iterrows():
-            if row["Position"] == position and pd.notna(row["Dependency"]):
-                dependency_position = int(row["Dependency"])
-                break
+        # Get the dependency position
+        dependency_position = work_item.dependency
 
-        # If there's a dependency, update start dates
-        if dependency_position is not None:
-            for dep_name, dep_stats in stats.items():
-                if dep_stats["position"] == dependency_position:
-                    # Start dates are the completion dates of the dependency
-                    project_stats["start_p10"] = _convert_to_date(dep_stats["p10"])
-                    project_stats["start_p50"] = _convert_to_date(dep_stats["p50"])
-                    project_stats["start_p90"] = _convert_to_date(dep_stats["p90"])
-                    break
+        # Find the dependent work item
+        dependent_work_item = position_to_work_item.get(dependency_position)
+        if not dependent_work_item:
+            continue
+
+        # Get the dependent project name
+        dependent_project = dependent_work_item.initiative
+        if dependent_project not in stats:
+            continue
+
+        # Start dates are the completion dates of the dependency
+        dep_stats = stats[dependent_project]
+        project_stats["start_p10"] = convert_to_date(dep_stats["p10"])
+        project_stats["start_p50"] = convert_to_date(dep_stats["p50"])
+        project_stats["start_p90"] = convert_to_date(dep_stats["p90"])
 
 
 # Analyze results function
-def analyze_results(simulation_results, df):
+def analyze_results(simulation_results, work_items):
     """Analyze simulation results and calculate statistics"""
+    # Create a dictionary to store statistics for each project
     stats = {}
 
-    for idx, project in df.iterrows():
-        project_name = project["Initiative"]
-        position = project["Position"]
+    # Get project names and due dates from work items
+    project_names = [item.initiative for item in work_items]
+    due_dates = [item.due_date for item in work_items]
+
+    for idx, project_name in enumerate(project_names):
+        position = work_items[idx].position
 
         # Extract results for this project
         project_results = []
@@ -273,34 +209,36 @@ def analyze_results(simulation_results, df):
         n = len(completion_dates)
         stats[project_name] = {
             "position": position,
-            "due_date": project["Due date"],
+            "due_date": due_dates[idx],
             "on_time_probability": (on_time_count / n) * 100,
             "p10": completion_dates[int(n * 0.1)],
             "p50": completion_dates[int(n * 0.5)],
             "p90": completion_dates[int(n * 0.9)],
-            "best_effort": project["Best"],
-            "likely_effort": project["Most likely"],
-            "worst_effort": project["Worst"],
+            "best_effort": work_items[idx].best_estimate,
+            "likely_effort": work_items[idx].most_likely_estimate,
+            "worst_effort": work_items[idx].worst_estimate,
         }
 
     return stats
 
 
 # Create Gantt chart
-def create_gantt_chart(stats, start_date, df):
+def create_gantt_chart(stats, project_start_date, work_items):
     """Create Gantt chart visualization"""
+    # Create figure
     fig = go.Figure()
 
     # Sort projects by position
-    sorted_projects = sorted(stats.items(), key=lambda x: x[1]["position"])
+    project_order = {item.initiative: item.position for item in work_items}
+    sorted_projects = sorted(stats.items(), key=lambda x: project_order[x[0]])
 
     for idx, (project_name, project_stats) in enumerate(sorted_projects):
         y_pos = len(sorted_projects) - idx - 1
 
         # Get the start dates for this project (accounting for dependencies)
         if "start_p10" not in project_stats:
-            # Calculate start dates if not already present
-            calculate_start_dates(stats, df)
+            # Calculate start dates
+            calculate_start_dates(stats, work_items)
 
         # P90 range (worst case)
         fig.add_trace(
@@ -419,9 +357,9 @@ def main():
         return
 
     # Load data if file path is provided
-    df = load_project_data(file_path)
+    work_items = load_work_items(file_path)
 
-    if df is None:
+    if not work_items:
         st.error(f"Could not load file: {file_path}. Please check that the file exists and has the correct format.")
 
         # Show expected format
@@ -446,7 +384,25 @@ def main():
     # Data tab content
     with data_tab:
         st.subheader("Loaded Project Data")
-        st.dataframe(df)
+
+        # Convert WorkItems to DataFrame for display
+        display_df = pd.DataFrame(
+            [
+                {
+                    "Position": item.position,
+                    "Initiative": item.initiative,
+                    "Due date": item.due_date,
+                    "Dependency": item.dependency,
+                    "Best": item.best_estimate,
+                    "Most likely": item.most_likely_estimate,
+                    "Worst": item.worst_estimate,
+                    "Expected Effort": item.expected_effort,
+                }
+                for item in work_items
+            ]
+        )
+
+        st.dataframe(display_df)
 
     # Simulation tab content
     with simulation_tab:
@@ -454,10 +410,10 @@ def main():
         if run_simulation:
             with st.spinner("Running simulations..."):
                 # Run simulation
-                simulation_results = run_monte_carlo_simulation(df, capacity_per_quarter, start_date, num_simulations)
+                simulation_results = run_monte_carlo_simulation(work_items, capacity_per_quarter, start_date, num_simulations)
 
                 # Analyze results
-                stats = analyze_results(simulation_results, df)
+                stats = analyze_results(simulation_results, work_items)
 
                 # Display results
                 st.success(f"✅ Completed {num_simulations:,} simulations!")
@@ -488,7 +444,7 @@ def main():
                 viz_tab1, viz_tab2 = st.tabs(["Timeline View", "Probability Chart"])
 
                 with viz_tab1:
-                    gantt_chart = create_gantt_chart(stats, start_date, df)
+                    gantt_chart = create_gantt_chart(stats, start_date, work_items)
                     st.plotly_chart(gantt_chart, use_container_width=True)
 
                 with viz_tab2:
@@ -514,16 +470,16 @@ def main():
 
                 # Apply color styling to dates based on whether they're on time
                 def style_dates(val, project, col):
-                    due_date = _convert_to_date(stats[project]["due_date"])
+                    due_date = convert_to_date(stats[project]["due_date"])
 
                     if col == "P10 (Best Case)":
-                        date_val = _convert_to_date(stats[project]["p10"])
+                        date_val = convert_to_date(stats[project]["p10"])
                         on_time = date_val <= due_date
                     elif col == "P50 (Most Likely)":
-                        date_val = _convert_to_date(stats[project]["p50"])
+                        date_val = convert_to_date(stats[project]["p50"])
                         on_time = date_val <= due_date
                     elif col == "P90 (Worst Case)":
-                        date_val = _convert_to_date(stats[project]["p90"])
+                        date_val = convert_to_date(stats[project]["p90"])
                         on_time = date_val <= due_date
                     else:
                         return val
