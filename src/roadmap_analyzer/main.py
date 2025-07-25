@@ -185,7 +185,7 @@ def show_welcome_screen():
             "Position": [1, 2, 3],
             "Initiative": ["Project A", "Project B", "Project C"],
             "Due date": ["30/11/2025", "30/11/2025", "30/05/2026"],
-            "Dependency": ["", 1, 2],
+            "Dependency": ["", "1", "2"],  # Keep as strings to avoid mixed types
             "Best": [10, 15, 8],
             "Most likely": [15, 20, 12],
             "Worst": [25, 30, 18],
@@ -220,18 +220,18 @@ def display_data_tab(work_items):
             {
                 "Position": item.position,
                 "Initiative": item.initiative,
-                "Due date": item.due_date,
-                "Dependency": item.dependency,
+                "Due date": item.due_date.strftime("%Y-%m-%d"),
+                "Dependency": item.dependency if item.dependency is not None else "",
                 "Best": item.best_estimate,
                 "Most likely": item.most_likely_estimate,
                 "Worst": item.worst_estimate,
-                "Expected Effort": item.expected_effort,
+                "Expected Effort": round(item.expected_effort, 1),
             }
             for item in work_items
         ]
     )
 
-    st.dataframe(display_df)
+    st.dataframe(display_df, use_container_width=True)
 
 
 def display_simulation_metrics(stats):
