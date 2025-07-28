@@ -21,10 +21,6 @@ wheels/
 *.egg
 MANIFEST
 
-# Include all files in samples directory
-!examples/
-!examples/**
-
 # Virtual environments
 .env
 .venv
@@ -65,3 +61,16 @@ coverage.xml
 *.xls
 *.db
 *.sqlite3
+
+# Temporary files
+~$*
+*~
+.~*
+
+# Only allow specific files in examples directory
+!examples/
+!examples/**/*.xlsx
+!examples/**/*.xls
+!examples/**/*.csv
+!examples/**/*.txt
+examples/**/*

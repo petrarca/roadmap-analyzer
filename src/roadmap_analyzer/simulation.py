@@ -1,6 +1,7 @@
 """Monte Carlo simulation for project roadmap analysis."""
 
 from datetime import datetime, timedelta
+from functools import lru_cache
 from typing import Callable, Dict, List, Optional
 
 from roadmap_analyzer.capacity import (
@@ -123,6 +124,7 @@ class SimulationEngine:
 
         return project_start_date
 
+    @lru_cache(maxsize=None)
     def _calculate_completion_date(
         self,
         start_date: datetime.date,
@@ -139,19 +141,34 @@ class SimulationEngine:
         Returns:
             The completion date for the work item
         """
+        # Fast path for zero effort
+        if effort <= 0:
+            return start_date
+
+        # Ensure start date is a working day
         current_date = self.ensure_working_day(start_date)
         remaining_effort = effort
 
-        while remaining_effort > 0:
-            # Get quarter info for current date
-            quarter_str, working_days_in_quarter, capacity_per_working_day = self.capacity_calculator.get_period_info(current_date)
+        # Pre-fetch period info for the current date to avoid repeated calculations
+        quarter_str, working_days_in_quarter, capacity_per_working_day = self.capacity_calculator.get_period_info(current_date)
 
+        # Check if we can complete the work in the current quarter
+        available_capacity = self._get_available_capacity(quarter_str, current_date, capacity_per_quarter)
+
+        if available_capacity >= remaining_effort:
+            # Work can be completed in this quarter
+            self.capacity_usage[quarter_str] = self.capacity_usage.get(quarter_str, 0) + remaining_effort
+            return self._calculate_exact_completion_date(current_date, remaining_effort, capacity_per_quarter, working_days_in_quarter)
+
+        # Work spans multiple quarters
+        while remaining_effort > 0:
             # Get available capacity for this quarter
             available_capacity = self._get_available_capacity(quarter_str, current_date, capacity_per_quarter)
 
             if available_capacity <= 0:
                 # No capacity left in this quarter, move to next quarter
                 current_date = self._move_to_next_quarter(current_date)
+                quarter_str, working_days_in_quarter, capacity_per_working_day = self.capacity_calculator.get_period_info(current_date)
                 continue
 
             # Calculate how much effort can be completed in this quarter
@@ -171,6 +188,7 @@ class SimulationEngine:
                 # Work continues to next quarter
                 remaining_effort -= effort_this_quarter
                 current_date = self._move_to_next_quarter(current_date)
+                quarter_str, working_days_in_quarter, capacity_per_working_day = self.capacity_calculator.get_period_info(current_date)
 
         return current_date
 

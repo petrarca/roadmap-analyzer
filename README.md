@@ -36,6 +36,10 @@ Or directly with:
 uv run -m streamlit run src/roadmap_analyzer/main.py
 ```
 
+## Examples
+
+The project includes an `examples` directory containing sample data files and usage scenarios to help you get started with the roadmap analyzer.
+
 ## Simulation Methodology
 
 The application uses Monte Carlo simulation to predict project completion dates based on effort estimates and capacity constraints. Key principles include:

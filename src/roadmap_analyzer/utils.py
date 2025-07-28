@@ -1,6 +1,7 @@
 """Utility functions for the roadmap analyzer."""
 
 from datetime import date, timedelta
+from functools import lru_cache
 from typing import Union
 
 import numpy as np
@@ -38,6 +39,7 @@ def triangular_random(min_val, mode_val, max_val):
     return np.random.triangular(min_val, mode_val, max_val)
 
 
+@lru_cache(maxsize=10000)
 def add_working_days(start_date, days):
     """Add working days to a date (excluding weekends).
 
@@ -48,15 +50,29 @@ def add_working_days(start_date, days):
     Returns:
         date: Date after adding working days
     """
-    current = start_date
-    days_added = 0
+    if days <= 0:
+        return start_date
 
-    while days_added < days:
-        current += timedelta(days=1)
-        if current.weekday() < 5:  # Monday = 0, Friday = 4
-            days_added += 1
+    # Optimize by calculating complete weeks first
+    weeks, remaining_days = divmod(days, 5)
+    result = start_date + timedelta(days=weeks * 7)
 
-    return current
+    # Handle remaining days
+    if remaining_days > 0:
+        # Get current weekday (0=Monday, 6=Sunday)
+        current_weekday = result.weekday()
+
+        # Calculate how many actual calendar days to add
+        if current_weekday + remaining_days <= 4:  # Still within the work week
+            result += timedelta(days=remaining_days)
+        else:  # Need to skip weekend
+            # Add days until Friday
+            days_until_friday = 4 - current_weekday
+            # Add remaining days after the weekend
+            days_after_weekend = remaining_days - days_until_friday
+            result += timedelta(days=days_until_friday + 2 + days_after_weekend)
+
+    return result
 
 
 def get_quarter_from_date(date_obj):
@@ -73,6 +89,7 @@ def get_quarter_from_date(date_obj):
     return f"{year}-Q{quarter}"
 
 
+@lru_cache(maxsize=10000)
 def is_working_day(date_obj: Union[date, pd.Timestamp]) -> bool:
     """Check if a date is a working day (Monday-Friday).
 

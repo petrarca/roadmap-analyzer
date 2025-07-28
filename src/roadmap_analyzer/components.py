@@ -204,21 +204,15 @@ def display_sidebar_controls():
             max_value=datetime.now().date() + timedelta(days=365),
         )
 
-        # Capacity per quarter slider
-        capacity_per_quarter = st.slider(
-            "Capacity per Quarter (PD)",
-            min_value=500,
-            max_value=5000,
-            value=2000,
-            step=100,
-        )
+        # Capacity per quarter numeric input
+        capacity_per_quarter = st.number_input("Capacity per Quarter (PD)", min_value=0.1, value=2000.0, step=100.0, format="%.1f")
 
         # Number of simulations slider
         num_simulations = st.slider(
             "Number of Simulations",
             min_value=100,
-            max_value=10000,
-            value=1000,
+            max_value=20000,
+            value=5000,
             step=100,
         )
 

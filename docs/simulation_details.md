@@ -63,9 +63,14 @@ Capacity is managed according to these rules:
    Remaining capacity = (Remaining working days in quarter / Total working days in quarter) * Quarterly capacity
    ```
 
-4. **Capacity Usage**: As work items consume capacity, the available capacity for subsequent items is reduced accordingly.
+4. **Shared Capacity Pool**: The given capacity per quarter is shared across all work items, especially when they are handled in parallel. This means:
+   - All work items draw from the same capacity pool
+   - Parallel work items compete for the same limited resources
+   - The simulation tracks capacity usage across all work items to ensure the total doesn't exceed the defined quarterly capacity
 
-5. **Quarter Transitions**: When a quarter's capacity is fully used, work continues in the next quarter.
+5. **Capacity Usage**: As work items consume capacity, the available capacity for subsequent items is reduced accordingly. The simulation maintains a shared capacity tracking system that ensures the total capacity used by all work items doesn't exceed the defined limits.
+
+6. **Quarter Transitions**: When a quarter's capacity is fully used, work continues in the next quarter.
 
 ## Date Calculations
 
