@@ -10,6 +10,68 @@ import streamlit as st
 
 from roadmap_analyzer.utils import prepare_dataframe_for_display
 
+# Global list to store notifications
+if "notifications" not in st.session_state:
+    st.session_state.notifications = []
+
+
+def add_notification(message, notification_type="info", show_inline=False):
+    """Add a notification to the status tab
+
+    Args:
+        message (str): The notification message
+        notification_type (str): Type of notification (info, warning, error, success)
+        show_inline (bool): Whether to also show the notification inline
+    """
+    # Add timestamp to the notification
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    st.session_state.notifications.append({"message": message, "type": notification_type, "timestamp": timestamp})
+
+    # Only show the notification inline if requested
+    if show_inline:
+        if notification_type == "info":
+            st.info(message)
+        elif notification_type == "warning":
+            st.warning(message)
+        elif notification_type == "error":
+            st.error(message)
+        elif notification_type == "success":
+            st.success(message)
+
+
+def display_status_tab():
+    """Display the status tab with all notifications"""
+    if not st.session_state.notifications:
+        st.info("No notifications yet. Status messages will appear here.")
+        return
+
+    # Add clear notifications button
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.subheader(f"📝 Status Messages ({len(st.session_state.notifications)})")
+    with col2:
+        if st.button("Clear All"):
+            st.session_state.notifications = []
+            st.experimental_rerun()
+
+    # Display all notifications in reverse chronological order (newest first)
+    for notification in reversed(st.session_state.notifications):
+        message = notification["message"]
+        notification_type = notification["type"]
+        timestamp = notification["timestamp"]
+
+        # Format message with timestamp
+        formatted_message = f"[{timestamp}] {message}"
+
+        if notification_type == "info":
+            st.info(formatted_message)
+        elif notification_type == "warning":
+            st.warning(formatted_message)
+        elif notification_type == "error":
+            st.error(formatted_message)
+        elif notification_type == "success":
+            st.success(formatted_message)
+
 
 def show_welcome_screen():
     """Display welcome screen with instructions"""
@@ -167,56 +229,71 @@ def display_simulation_metrics(stats):
 
     # Alert box
     if on_time_projects == total_projects:
-        st.success("✅ All projects have a good probability of meeting their deadlines!")
+        add_notification("✅ All projects have a good probability of meeting their deadlines!", "success")
     elif on_time_projects >= total_projects * 0.7:
-        st.warning("⚠️ Some projects may face delays. Consider increasing capacity or adjusting timelines.")
+        add_notification("⚠️ Some projects may face delays. Consider increasing capacity or adjusting timelines.", "warning")
     else:
-        st.error("🚨 Many work items are at risk of delays. Review capacity allocation and dependencies.")
+        add_notification("🚫 Many work items are at risk of delays. Review capacity allocation and dependencies.", "error")
 
 
-def display_sidebar_controls():
-    """Display sidebar controls for simulation parameters"""
+def display_sidebar_controls(file_path=""):
+    """Display sidebar controls for simulation parameters
+
+    Args:
+        file_path (str): Path to the Excel file (if already loaded)
+
+    Returns:
+        tuple: (file_path, start_date, capacity_per_quarter, num_simulations, run_simulation)
+    """
     with st.sidebar:
-        st.title("📊 Project Roadmap Monte Carlo Analysis")
         st.header("⚙️ Simulation Settings")
-
-        # File uploader
-        uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "xls"])
-
-        file_path = ""
-        if uploaded_file:
-            # Save the uploaded file to a temporary location and use that path
-            import tempfile
-
-            # Create a temporary file
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp_file:
-                tmp_file.write(uploaded_file.getvalue())
-                file_path = tmp_file.name
 
         # Simulation parameters
         st.subheader("Parameters")
 
-        # Start date picker
+        # Get default values from session state if available (loaded from Excel)
+        # Otherwise use current date and default values from config
+        from roadmap_analyzer.config import APP_CONFIG
+
+        # Start date picker - use value from Excel if available
+        default_start_date = datetime.now().date()
+        if "start_date" in st.session_state:
+            try:
+                # Try to parse the date from session state
+                default_start_date = pd.to_datetime(st.session_state["start_date"]).date()
+            except (ValueError, TypeError):
+                # If parsing fails, use current date
+                pass
+
         start_date = st.date_input(
             "Start Date",
-            value=datetime.now().date(),
-            min_value=datetime.now().date() - timedelta(days=365),
-            max_value=datetime.now().date() + timedelta(days=365),
+            value=default_start_date,
+            min_value=datetime.now().date() - timedelta(days=365 * 5),  # Allow dates up to 5 years in the past
+            max_value=datetime.now().date() + timedelta(days=365 * 5),  # Allow dates up to 5 years in the future
         )
 
-        # Capacity per quarter numeric input
-        capacity_per_quarter = st.number_input("Capacity per Quarter (PD)", min_value=0.1, value=2000.0, step=100.0, format="%.1f")
+        # Capacity per quarter numeric input - use value from session state if available
+        default_capacity = APP_CONFIG.simulation.default_capacity_per_quarter
+        if "capacity_per_quarter" in st.session_state:
+            default_capacity = st.session_state["capacity_per_quarter"]
+        capacity_per_quarter = st.number_input("Capacity per Quarter (PD)", min_value=0.1, value=float(default_capacity), step=100.0, format="%.1f")
 
-        # Number of simulations slider
+        # Number of simulations slider - use value from session state if available
+        default_simulations = APP_CONFIG.simulation.default_num_simulations
+        if "num_simulations" in st.session_state:
+            default_simulations = st.session_state["num_simulations"]
+        max_simulations = max(APP_CONFIG.simulation.simulation_options)
         num_simulations = st.slider(
             "Number of Simulations",
             min_value=100,
-            max_value=20000,
-            value=5000,
+            max_value=max_simulations,
+            value=default_simulations,
             step=100,
         )
 
+        # Configuration values loaded from Excel are shown silently without notification
+
         # Run simulation button - enabled only when data is loaded
-        run_simulation = st.button("🚀 Run Simulation", type="primary", disabled=not uploaded_file)
+        run_simulation = st.button("🚀 Run Simulation", type="primary", disabled=not file_path)
 
         return file_path, start_date, capacity_per_quarter, num_simulations, run_simulation

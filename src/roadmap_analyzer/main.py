@@ -7,8 +7,16 @@ import streamlit as st
 
 # Import custom modules
 from roadmap_analyzer.capacity import CapacityCalculator, TimePeriodType
-from roadmap_analyzer.components import display_data_tab, display_sidebar_controls, display_simulation_metrics, show_welcome_screen
+from roadmap_analyzer.components import (
+    add_notification,
+    display_data_tab,
+    display_sidebar_controls,
+    display_simulation_metrics,
+    display_status_tab,
+    show_welcome_screen,
+)
 from roadmap_analyzer.config import load_config
+from roadmap_analyzer.config_loader import load_and_apply_config
 from roadmap_analyzer.data_loader import load_work_items
 from roadmap_analyzer.models import WorkItem
 from roadmap_analyzer.simulation import SimulationEngine
@@ -91,7 +99,8 @@ def run_simulation_workflow(work_items, capacity_per_quarter, start_date, num_si
         original_date = start_date
         while not is_working_day(start_date):
             start_date += timedelta(days=1)
-        st.info(f"Adjusted start date from {original_date.strftime('%Y-%m-%d')} (weekend) to {start_date.strftime('%Y-%m-%d')} (next working day)")
+        message = f"Adjusted start date from {original_date.strftime('%Y-%m-%d')} (weekend) to {start_date.strftime('%Y-%m-%d')}"
+        add_notification(f"{message} (next working day)", "info")
 
     def update_progress(progress, message):
         progress_bar.progress(progress)
@@ -121,28 +130,61 @@ def main():
     if "stats" not in st.session_state:
         st.session_state.stats = None
 
-    # Get sidebar controls using the components module
-    file_path, start_date, capacity_per_quarter, num_simulations, run_simulation = display_sidebar_controls()
+    # Initialize file upload handling
+    file_path = ""
 
-    # Check if file path is empty
-    if not file_path.strip():
+    # Add title to sidebar before file uploader
+    st.sidebar.title("📊 Project Roadmap Monte Carlo Analysis")
+
+    uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx", "xls"])
+
+    if uploaded_file:
+        # Clear notifications when loading a new file
+        if "notifications" in st.session_state:
+            st.session_state.notifications = []
+
+            # Add initial notification about clearing
+            add_notification("Status messages cleared - loading new file", "info")
+
+        # Save the uploaded file to a temporary location and use that path
+        import tempfile
+
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp_file:
+            tmp_file.write(uploaded_file.getvalue())
+            file_path = tmp_file.name
+
+        # Load configuration from Excel file if available
+        # This needs to happen before the sidebar controls are displayed
+        updated_config = load_and_apply_config(file_path, APP_CONFIG)
+
+        # Load data if file path is provided
+        work_items = load_work_items(file_path, updated_config)
+    else:
+        # No file uploaded
         show_welcome_screen()
         return
 
-    # Load data if file path is provided
-    work_items = load_work_items(file_path, APP_CONFIG)
+    # Get sidebar controls using the components module
+    # This will now use the session state values set by load_and_apply_config
+    _, start_date, capacity_per_quarter, num_simulations, run_simulation = display_sidebar_controls(file_path)
 
     if not work_items:
-        st.error(f"Could not load file: {file_path}. Please check that the file exists and has the correct format.")
+        error_msg = f"Could not load file: {file_path}. Please check that the file exists and has the correct format."
+        add_notification(error_msg, "error", show_inline=True)
         show_welcome_screen()  # Show welcome screen with example format
         return
 
-    # Create main tabs for data view and simulation view
-    data_tab, simulation_tab = st.tabs(["📋 Roadmap data", "📊 Simulation results"])
+    # Create main tabs for data view, simulation view, and status
+    data_tab, simulation_tab, status_tab = st.tabs(["📋 Roadmap data", "📊 Simulation results", "📝 Status"])
 
     # Data tab content
     with data_tab:
         display_data_tab(work_items)
+
+    # Status tab content
+    with status_tab:
+        display_status_tab()
 
     # Simulation tab content
     with simulation_tab:

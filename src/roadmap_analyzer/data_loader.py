@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit as st
 from pydantic import ValidationError
 
+from roadmap_analyzer.components import add_notification
 from roadmap_analyzer.config import AppConfig
 from roadmap_analyzer.models import WorkItem
 
@@ -26,13 +27,13 @@ def load_project_data(file_path: str, config: AppConfig) -> pd.DataFrame:
         # First try to read from "Items" sheet
         try:
             df = pd.read_excel(file_path, sheet_name="Items")
-            st.info("✅ Successfully loaded data from 'Items' sheet")
+            add_notification("✅ Successfully loaded data from 'Items' sheet", "success")
         except ValueError as e:
             # If "Items" sheet doesn't exist, try default sheet
             if "Worksheet named 'Items' not found" in str(e) or "Items" in str(e):
-                st.warning("⚠️ 'Items' sheet not found, trying default sheet...")
+                add_notification("⚠️ 'Items' sheet not found, trying default sheet...", "warning")
                 df = pd.read_excel(file_path)
-                st.info("✅ Successfully loaded data from default sheet")
+                add_notification("✅ Successfully loaded data from default sheet", "success")
             else:
                 raise e
 
@@ -54,10 +55,10 @@ def load_project_data(file_path: str, config: AppConfig) -> pd.DataFrame:
         return df
 
     except FileNotFoundError:
-        st.error(f"File not found: {file_path}")
+        add_notification(f"File not found: {file_path}", "error")
         return None
     except Exception as e:
-        st.error(f"Error loading file: {str(e)}")
+        add_notification(f"Error loading file: {str(e)}", "error")
         return None
 
 
