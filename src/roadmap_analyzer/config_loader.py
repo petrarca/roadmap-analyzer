@@ -68,23 +68,45 @@ def _handle_start_date(value):
     """Handle start date configuration value.
 
     Args:
-        value: The start date value from the configuration
+        value: The start date value from Excel
     """
-    if pd.notna(value):
-        # Store as ISO format string if it's a valid date
-        try:
-            if isinstance(value, pd.Timestamp):
-                # Store as ISO format string
-                value = value.strftime("%Y-%m-%d %H:%M:%S")
-            elif isinstance(value, str):
-                # Try to parse as date and format
-                value = pd.to_datetime(value).strftime("%Y-%m-%d %H:%M:%S")
-        except Exception:
-            # If parsing fails, store as is
-            pass
-
-        # Store in session state for later use
+    try:
+        # Parse the date value
+        start_date = pd.to_datetime(value)
+        # Store in session state for UI controls to access
+        st.session_state["start_date"] = start_date
+    except Exception as e:
+        add_notification(f"⚠️ Could not parse start date '{value}': {str(e)}", "warning")
+        # If parsing fails, store as is
         st.session_state["start_date"] = value
+
+
+def _handle_time_period(value):
+    """Handle time period configuration value.
+
+    Args:
+        value: The time period value from Excel ('q' for quarterly, 'm' for monthly)
+    """
+    try:
+        # Convert value to lowercase string for comparison
+        period_value = str(value).lower().strip()
+
+        # Map the value to the appropriate time period type
+        if period_value in ["q", "quarter", "quarterly"]:
+            time_period = "quarterly"
+        elif period_value in ["m", "month", "monthly"]:
+            time_period = "monthly"
+        else:
+            # Default to quarterly if value is not recognized
+            time_period = "quarterly"
+            add_notification(f"⚠️ Unrecognized time period '{value}', defaulting to quarterly", "warning")
+
+        # Store in session state for UI controls to access
+        st.session_state["time_period_type"] = time_period
+    except Exception as e:
+        add_notification(f"⚠️ Could not process time period '{value}': {str(e)}", "warning")
+        # Default to quarterly
+        st.session_state["time_period_type"] = "quarterly"
 
 
 def _parse_capacity_value(value):
@@ -188,7 +210,8 @@ def apply_config_values(config_dict: Dict[str, Any], app_config: AppConfig) -> A
     config_mapping = {
         # Simulation config
         "Start date": None,  # Special handling for date values
-        "Capacity": "simulation.default_capacity_per_quarter",
+        "Time period": None,  # Special handling for time period (q/m)
+        "Capacity": "simulation.default_capacity_per_quarter",  # Now just a numeric value
         "Iterations": "simulation.default_num_simulations",
         # Other possible mappings (commented out until needed)
         # "Working days per quarter": "simulation.working_days_per_quarter",
@@ -204,6 +227,8 @@ def apply_config_values(config_dict: Dict[str, Any], app_config: AppConfig) -> A
         if key in config_mapping:
             if key == "Start date":
                 _handle_start_date(value)
+            elif key == "Time period":
+                _handle_time_period(value)
             else:
                 # Handle nested attributes using the mapping
                 attr_path = config_mapping[key].split(".")
@@ -211,10 +236,11 @@ def apply_config_values(config_dict: Dict[str, Any], app_config: AppConfig) -> A
 
                 # Also store in session state for UI controls to access
                 if key == "Capacity":
-                    # Store the parsed capacity value in session state
+                    # Store the capacity value in session state (now just a numeric value)
                     try:
-                        parsed_value = _parse_capacity_value(value) if isinstance(value, str) else value
-                        st.session_state["capacity_per_quarter"] = parsed_value
+                        # No need to parse capacity with units anymore
+                        capacity_value = float(value) if not isinstance(value, (int, float)) else value
+                        st.session_state["capacity_value"] = capacity_value
                     except Exception:
                         pass
                 elif key == "Iterations":

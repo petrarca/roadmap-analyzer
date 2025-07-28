@@ -69,14 +69,14 @@ class SimulationEngine:
         self,
         work_item: WorkItem,
         start_date: datetime.date,
-        capacity_per_quarter: int,
+        capacity_per_period: float,
     ) -> SimulationResult:
         """Simulate a single work item and calculate its completion date.
 
         Args:
             work_item: The work item to simulate
             start_date: The overall project start date
-            capacity_per_quarter: Available capacity per quarter
+            capacity_per_period: Available capacity per period (quarter or month)
 
         Returns:
             SimulationResult for the work item
@@ -88,7 +88,7 @@ class SimulationEngine:
         project_start_date = self._determine_start_date(work_item, start_date)
 
         # Calculate completion date based on effort and capacity
-        completion_date = self._calculate_completion_date(project_start_date, effort, capacity_per_quarter)
+        completion_date = self._calculate_completion_date(project_start_date, effort, capacity_per_period)
 
         # Store the completion date for potential dependencies
         self.completion_dates[work_item.position] = completion_date
@@ -129,14 +129,14 @@ class SimulationEngine:
         self,
         start_date: datetime.date,
         effort: float,
-        capacity_per_quarter: int,
+        capacity_per_period: float,
     ) -> datetime.date:
         """Calculate the completion date for a work item based on effort and capacity.
 
         Args:
             start_date: The start date for the work item
             effort: The effort required for the work item
-            capacity_per_quarter: Available capacity per quarter
+            capacity_per_period: Available capacity per period (quarter or month)
 
         Returns:
             The completion date for the work item
@@ -150,95 +150,138 @@ class SimulationEngine:
         remaining_effort = effort
 
         # Pre-fetch period info for the current date to avoid repeated calculations
-        quarter_str, working_days_in_quarter, capacity_per_working_day = self.capacity_calculator.get_period_info(current_date)
+        # The capacity calculator already has the correct period type from initialization
+        period_str, working_days_in_period, _ = self.capacity_calculator.get_period_info(current_date)
 
-        # Check if we can complete the work in the current quarter
-        available_capacity = self._get_available_capacity(quarter_str, current_date, capacity_per_quarter)
+        # Check if we can complete the work in the current period
+        available_capacity = self._get_available_capacity(period_str, current_date, capacity_per_period)
 
         if available_capacity >= remaining_effort:
-            # Work can be completed in this quarter
-            self.capacity_usage[quarter_str] = self.capacity_usage.get(quarter_str, 0) + remaining_effort
-            return self._calculate_exact_completion_date(current_date, remaining_effort, capacity_per_quarter, working_days_in_quarter)
+            # Work can be completed in this period
+            self.capacity_usage[period_str] = self.capacity_usage.get(period_str, 0) + remaining_effort
+            return self._calculate_exact_completion_date(current_date, remaining_effort, capacity_per_period, working_days_in_period)
 
         # Work spans multiple quarters
         while remaining_effort > 0:
-            # Get available capacity for this quarter
-            available_capacity = self._get_available_capacity(quarter_str, current_date, capacity_per_quarter)
+            # Get available capacity for this period
+            available_capacity = self._get_available_capacity(period_str, current_date, capacity_per_period)
 
             if available_capacity <= 0:
                 # No capacity left in this quarter, move to next quarter
-                current_date = self._move_to_next_quarter(current_date)
-                quarter_str, working_days_in_quarter, capacity_per_working_day = self.capacity_calculator.get_period_info(current_date)
+                # Use the period type from the capacity calculator
+                current_date = self._move_to_next_period(current_date)
+                period_str, working_days_in_period, _ = self.capacity_calculator.get_period_info(current_date)
                 continue
 
             # Calculate how much effort can be completed in this quarter
             effort_this_quarter = min(remaining_effort, available_capacity)
 
             # Update capacity usage for this quarter
-            self.capacity_usage[quarter_str] = self.capacity_usage.get(quarter_str, 0) + effort_this_quarter
+            self.capacity_usage[period_str] = self.capacity_usage.get(period_str, 0) + effort_this_quarter
 
             # Calculate the exact completion date within this quarter
             if effort_this_quarter >= remaining_effort:
-                # Work will be completed in this quarter
+                # Work will be completed in this period
                 completion_date = self._calculate_exact_completion_date(
-                    current_date, effort_this_quarter, capacity_per_quarter, working_days_in_quarter
+                    current_date, effort_this_quarter, capacity_per_period, working_days_in_period
                 )
                 return completion_date
             else:
                 # Work continues to next quarter
                 remaining_effort -= effort_this_quarter
-                current_date = self._move_to_next_quarter(current_date)
-                quarter_str, working_days_in_quarter, capacity_per_working_day = self.capacity_calculator.get_period_info(current_date)
+                # Use the period type from the capacity calculator
+                current_date = self._move_to_next_period(current_date)
+                period_str, working_days_in_period, _ = self.capacity_calculator.get_period_info(current_date)
 
         return current_date
 
     def _get_available_capacity(
         self,
-        quarter_str: str,
+        period_str: str,
         current_date: datetime.date,
-        capacity_per_quarter: int,
+        capacity_per_period: float,
     ) -> float:
-        """Get the available capacity for a quarter.
+        """Get the available capacity for a time period (quarter or month).
 
         Args:
-            quarter_str: The quarter string identifier
-            current_date: The current date within the quarter
-            capacity_per_quarter: Total capacity for the quarter
+            period_str: The period string identifier (e.g., "2025-Q1" or "2025-01")
+            current_date: The current date within the period
+            capacity_per_period: Total capacity for the period
 
         Returns:
-            Available capacity for the quarter
+            Available capacity for the period
         """
-        used_capacity = self.capacity_usage.get(quarter_str, 0)
+        used_capacity = self.capacity_usage.get(period_str, 0)
 
-        # Calculate remaining capacity in the quarter from the current date
-        quarter_str_calc, remaining_capacity = self.capacity_calculator.calculate_remaining_capacity(current_date, capacity_per_quarter)
+        # Calculate remaining capacity in the period from the current date
+        # The capacity calculator already knows the time period type from its initialization
+        _, remaining_capacity = self.capacity_calculator.calculate_remaining_capacity(current_date, capacity_per_period)
 
         # The available capacity is the minimum of remaining capacity and unused capacity
-        available_capacity = min(remaining_capacity, capacity_per_quarter - used_capacity)
+        available_capacity = min(remaining_capacity, capacity_per_period - used_capacity)
 
         return max(0, available_capacity)
 
-    def _move_to_next_quarter(self, current_date: datetime.date) -> datetime.date:
-        """Move to the first working day of the next quarter.
+    def _move_to_next_period(self, date_obj: datetime.date) -> datetime.date:
+        """Move to the first day of the next period (quarter or month) based on capacity calculator's period type.
 
         Args:
-            current_date: The current date
+            date_obj: The current date
 
         Returns:
-            The first working day of the next quarter
+            The first day of the next period
         """
-        year = current_date.year
-        quarter = (current_date.month - 1) // 3 + 1
+        # Use the TimePeriodType enum from the capacity calculator
+        if self.capacity_calculator.period_type == TimePeriodType.QUARTERLY:
+            return self._move_to_next_quarter(date_obj)
+        else:  # monthly
+            return self._move_to_next_month(date_obj)
 
-        if quarter == 4:
-            # Move to Q1 of next year
-            next_quarter_start = datetime(year + 1, 1, 1).date()
-        else:
-            # Move to next quarter of same year
-            next_quarter_month = quarter * 3 + 1
-            next_quarter_start = datetime(year, next_quarter_month, 1).date()
+    def _move_to_next_quarter(self, date_obj: datetime.date) -> datetime.date:
+        """Move to the first day of the next quarter.
 
-        return self.ensure_working_day(next_quarter_start)
+        Args:
+            date_obj: The current date
+
+        Returns:
+            The first day of the next quarter
+        """
+        year = date_obj.year
+        month = date_obj.month
+
+        # Calculate the first month of the next quarter
+        next_quarter_month = month + 3 - ((month - 1) % 3)
+        if next_quarter_month > 12:
+            next_quarter_month = 1
+            year += 1
+
+        # Create a date for the first day of the next quarter
+        next_quarter_date = datetime(year, next_quarter_month, 1).date()
+
+        return next_quarter_date
+
+    def _move_to_next_month(self, date_obj: datetime.date) -> datetime.date:
+        """Move to the first day of the next month.
+
+        Args:
+            date_obj: The current date
+
+        Returns:
+            The first day of the next month
+        """
+        year = date_obj.year
+        month = date_obj.month
+
+        # Calculate the next month
+        next_month = month + 1
+        if next_month > 12:
+            next_month = 1
+            year += 1
+
+        # Create a date for the first day of the next month
+        next_month_date = datetime(year, next_month, 1).date()
+
+        return next_month_date
 
     def _calculate_exact_completion_date(
         self,
@@ -272,7 +315,7 @@ class SimulationEngine:
     def run_monte_carlo_simulation(
         self,
         work_items: List[WorkItem],
-        capacity_per_quarter: int,
+        capacity_per_period: float,
         start_date: datetime.date,
         num_simulations: int,
         progress_callback: Optional[Callable[[float, str], None]] = None,
@@ -281,10 +324,11 @@ class SimulationEngine:
 
         Args:
             work_items: List of WorkItem objects to simulate
-            capacity_per_quarter: Available capacity per quarter in person-days
+            capacity_per_period: Available capacity per period in person-days
             start_date: Project start date
             num_simulations: Number of simulation runs to perform
             progress_callback: Optional callback function for progress updates
+            time_period_type: Type of time period ("quarterly" or "monthly")
 
         Returns:
             List of SimulationRun objects containing results from all simulations
@@ -298,7 +342,7 @@ class SimulationEngine:
             # Run simulation for all work items
             simulation_run_results = []
             for work_item in work_items:
-                result = self._simulate_single_work_item(work_item, start_date, capacity_per_quarter)
+                result = self._simulate_single_work_item(work_item, start_date, capacity_per_period)
                 simulation_run_results.append(result)
 
             # Create a SimulationRun object

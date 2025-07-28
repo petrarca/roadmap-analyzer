@@ -18,17 +18,41 @@ from roadmap_analyzer.components import (
 from roadmap_analyzer.config import load_config
 from roadmap_analyzer.config_loader import load_and_apply_config
 from roadmap_analyzer.data_loader import load_work_items
+from roadmap_analyzer.gantt_chart import create_gantt_chart
 from roadmap_analyzer.models import WorkItem
+from roadmap_analyzer.probability_chart import create_probability_chart
 from roadmap_analyzer.simulation import SimulationEngine
 from roadmap_analyzer.statistics import display_detailed_statistics
 from roadmap_analyzer.utils import is_working_day, prepare_dataframe_for_display
-from roadmap_analyzer.visualization import create_gantt_chart, create_probability_chart
 
 # Load application configuration
 APP_CONFIG = load_config()
 
 # Page configuration using config model
 st.set_page_config(page_title=APP_CONFIG.ui.page_title, page_icon=APP_CONFIG.ui.page_icon, layout=APP_CONFIG.ui.layout)
+
+# Add custom CSS to reduce the font size of metric values
+st.markdown(
+    """
+<style>
+    /* Reduce the font size of metric values */
+    [data-testid="stMetricValue"] {
+        font-size: 1.5rem !important;
+    }
+    
+    /* Also reduce the font size of metric labels */
+    [data-testid="stMetricLabel"] {
+        font-size: 0.9rem !important;
+    }
+    
+    /* Adjust the delta value size */
+    [data-testid="stMetricDelta"] {
+        font-size: 0.9rem !important;
+    }
+</style>
+""",
+    unsafe_allow_html=True,
+)
 
 # Description in main area
 st.markdown("Analyze project timelines with Monte Carlo simulation to assess on-time delivery probabilities")
@@ -71,25 +95,23 @@ def create_work_items_display_dataframe(work_items: List[WorkItem]) -> pd.DataFr
 
     return prepare_dataframe_for_display(display_df)
 
-    # Visualization functions
-
-    # Create Gantt chart
-    # Gantt chart creation moved to visualization.py
-
-    # Create probability chart
-    # Probability chart creation moved to visualization.py
-
-    # UI Helper Functions
-    # Create display-ready DataFrame using centralized function
-    display_df = create_work_items_display_dataframe(work_items)
-    st.dataframe(display_df, use_container_width=True)
-
 
 # Detailed statistics display moved to statistics.py
 
 
-def run_simulation_workflow(work_items, capacity_per_quarter, start_date, num_simulations):
-    """Run the Monte Carlo simulation workflow."""
+def run_simulation_workflow(work_items, capacity_value, start_date, time_period_type, num_simulations):
+    """Run the Monte Carlo simulation workflow.
+
+    Args:
+        work_items: List of work items to simulate
+        capacity_value: Capacity value per time period (quarter or month)
+        start_date: Start date for the simulation
+        time_period_type: Type of time period ("quarterly" or "monthly")
+        num_simulations: Number of Monte Carlo simulations to run
+
+    Returns:
+        Simulation statistics
+    """
     # Set up progress tracking
     progress_bar = st.progress(0)
     status_text = st.empty()
@@ -106,13 +128,15 @@ def run_simulation_workflow(work_items, capacity_per_quarter, start_date, num_si
         progress_bar.progress(progress)
         status_text.text(message)
 
-    # Create capacity calculator and simulation engine
-    capacity_calculator = CapacityCalculator(APP_CONFIG, TimePeriodType.QUARTERLY)
+    # Create capacity calculator with the selected time period
+    period_type = TimePeriodType.QUARTERLY if time_period_type == "quarterly" else TimePeriodType.MONTHLY
+    capacity_calculator = CapacityCalculator(APP_CONFIG, period_type)
     simulation_engine = SimulationEngine(APP_CONFIG, capacity_calculator)
 
     # Run simulation with progress callback
+    # The capacity calculator already has the correct period type from initialization
     simulation_results = simulation_engine.run_monte_carlo_simulation(
-        work_items, capacity_per_quarter, start_date, num_simulations, progress_callback=update_progress
+        work_items, capacity_value, start_date, num_simulations, progress_callback=update_progress
     )
 
     # Analyze results
@@ -140,11 +164,14 @@ def main():
 
     if uploaded_file:
         # Clear notifications when loading a new file
-        if "notifications" in st.session_state:
+        # Initialize if needed
+        if "notifications" not in st.session_state:
+            st.session_state.notifications = []
+        else:
             st.session_state.notifications = []
 
-            # Add initial notification about clearing
-            add_notification("Status messages cleared - loading new file", "info")
+        # Add initial notification about clearing
+        add_notification("Status messages cleared - loading new file", "info")
 
         # Save the uploaded file to a temporary location and use that path
         import tempfile
@@ -167,7 +194,7 @@ def main():
 
     # Get sidebar controls using the components module
     # This will now use the session state values set by load_and_apply_config
-    _, start_date, capacity_per_quarter, num_simulations, run_simulation = display_sidebar_controls(file_path)
+    _, start_date, capacity_value, time_period_type, num_simulations, run_simulation = display_sidebar_controls(file_path)
 
     if not work_items:
         error_msg = f"Could not load file: {file_path}. Please check that the file exists and has the correct format."
@@ -193,7 +220,7 @@ def main():
             # Run simulation if button was clicked
             if run_simulation:
                 with st.spinner("Running simulations..."):
-                    stats = run_simulation_workflow(work_items, capacity_per_quarter, start_date, num_simulations)
+                    stats = run_simulation_workflow(work_items, capacity_value, start_date, time_period_type, num_simulations)
                     # Store results in session state for persistence
                     st.session_state.stats = stats
             else:
@@ -206,18 +233,20 @@ def main():
             # Visualizations
             st.subheader("📊 Visualizations")
 
-            viz_tab1, viz_tab2 = st.tabs(["Timeline View", "Probability Chart"])
+            viz_tab1, viz_tab2, viz_tab3 = st.tabs(["Timeline View", "Probability Chart", "Detailed Statistics"])
 
             with viz_tab1:
-                gantt_chart = create_gantt_chart(stats, start_date, work_items)
+                gantt_chart = create_gantt_chart(stats, work_items)
                 st.plotly_chart(gantt_chart, use_container_width=True)
 
             with viz_tab2:
+                # Create scatter plot visualization
                 prob_chart = create_probability_chart(stats)
                 st.plotly_chart(prob_chart, use_container_width=True)
 
-            # Detailed statistics table
-            display_detailed_statistics(stats)
+            with viz_tab3:
+                # Detailed statistics table in its own tab
+                display_detailed_statistics(stats)
 
 
 if __name__ == "__main__":

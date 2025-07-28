@@ -1,18 +1,17 @@
 """
-Visualization module for roadmap analyzer.
-Contains all visualization components and charts.
+Gantt chart visualization module for roadmap analyzer.
+Handles the creation and formatting of Gantt charts for project timelines.
 """
 
 import plotly.graph_objects as go
 
 
-def create_gantt_chart(stats, project_start_date, work_items):
+def create_gantt_chart(stats, work_items):
     """
     Create Gantt chart visualization with confidence intervals.
 
     Args:
         stats: Dictionary of project statistics
-        project_start_date: Start date of the project
         work_items: List of work items
 
     Returns:
@@ -21,9 +20,17 @@ def create_gantt_chart(stats, project_start_date, work_items):
     # Create figure
     fig = go.Figure()
 
-    # Sort projects by position
+    # Create a mapping of project names to positions
     project_order = {item.item: item.position for item in work_items}
-    sorted_projects = sorted(stats.items(), key=lambda x: project_order[x[0]])
+
+    # Sort projects by position, handling cases where a project might not be in the mapping
+    def get_position(project_name):
+        # Default to a large number if the project name is not found in the mapping
+        # This ensures unknown projects appear at the end
+        return project_order.get(project_name, float("inf"))
+
+    sorted_projects = sorted(stats.items(), key=lambda x: get_position(x[0]))
+
     # Reverse the order to match the data table (C1 at the top)
     sorted_projects = list(reversed(sorted_projects))
 
@@ -112,54 +119,6 @@ def create_gantt_chart(stats, project_start_date, work_items):
         height=100 + len(sorted_projects) * 80,
         showlegend=True,
         hovermode="closest",
-    )
-
-    return fig
-
-
-def create_probability_chart(stats):
-    """
-    Create probability chart for on-time completion.
-
-    Args:
-        stats: Dictionary of project statistics
-
-    Returns:
-        Plotly figure object
-    """
-    # Extract project names and on-time probabilities
-    projects = list(stats.keys())
-    probabilities = [stats[p].on_time_probability * 100 for p in projects]
-
-    # Create horizontal bar chart
-    fig = go.Figure()
-
-    # Add bars
-    fig.add_trace(
-        go.Bar(
-            y=projects,
-            x=probabilities,
-            orientation="h",
-            marker=dict(
-                color=["#4CAF50" if p >= 80 else "#FFA500" if p >= 50 else "#FF7F7F" for p in probabilities],
-                line=dict(color="rgb(8,48,107)", width=1.5),
-            ),
-            text=[f"{p:.1f}%" for p in probabilities],
-            textposition="auto",
-        )
-    )
-
-    # Update layout
-    fig.update_layout(
-        title="On-Time Completion Probability",
-        xaxis=dict(
-            title="Probability (%)",
-            range=[0, 100],
-        ),
-        yaxis=dict(
-            title="Project",
-        ),
-        height=100 + len(projects) * 40,
     )
 
     return fig

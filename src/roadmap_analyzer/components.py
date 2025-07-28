@@ -10,9 +10,7 @@ import streamlit as st
 
 from roadmap_analyzer.utils import prepare_dataframe_for_display
 
-# Global list to store notifications
-if "notifications" not in st.session_state:
-    st.session_state.notifications = []
+# Global list to store notifications - moved to function to ensure proper initialization
 
 
 def add_notification(message, notification_type="info", show_inline=False):
@@ -23,6 +21,10 @@ def add_notification(message, notification_type="info", show_inline=False):
         notification_type (str): Type of notification (info, warning, error, success)
         show_inline (bool): Whether to also show the notification inline
     """
+    # Ensure notifications list exists in session state
+    if "notifications" not in st.session_state:
+        st.session_state.notifications = []
+
     # Add timestamp to the notification
     timestamp = datetime.now().strftime("%H:%M:%S")
     st.session_state.notifications.append({"message": message, "type": notification_type, "timestamp": timestamp})
@@ -41,6 +43,10 @@ def add_notification(message, notification_type="info", show_inline=False):
 
 def display_status_tab():
     """Display the status tab with all notifications"""
+    # Ensure notifications list exists in session state
+    if "notifications" not in st.session_state:
+        st.session_state.notifications = []
+
     if not st.session_state.notifications:
         st.info("No notifications yet. Status messages will appear here.")
         return
@@ -176,9 +182,9 @@ def display_data_tab(work_items):
                 "Item": item.item,
                 "Due Date": item.due_date.strftime("%d/%m/%Y") if item.due_date else "N/A",
                 "Dependency": item.dependency,
-                "Best (hrs)": item.best_estimate,
-                "Likely (hrs)": item.most_likely_estimate,
-                "Worst (hrs)": item.worst_estimate,
+                "Best (PD)": item.best_estimate,
+                "Likely (PD)": item.most_likely_estimate,
+                "Worst (PD)": item.worst_estimate,
             }
         )
 
@@ -243,7 +249,7 @@ def display_sidebar_controls(file_path=""):
         file_path (str): Path to the Excel file (if already loaded)
 
     Returns:
-        tuple: (file_path, start_date, capacity_per_quarter, num_simulations, run_simulation)
+        tuple: (file_path, start_date, capacity_value, time_period_type, num_simulations, run_simulation)
     """
     with st.sidebar:
         st.header("⚙️ Simulation Settings")
@@ -272,11 +278,42 @@ def display_sidebar_controls(file_path=""):
             max_value=datetime.now().date() + timedelta(days=365 * 5),  # Allow dates up to 5 years in the future
         )
 
-        # Capacity per quarter numeric input - use value from session state if available
+        # Time period selection (quarter/month)
+
+        # Get default time period from session state if available
+        default_period_type = "quarterly"
+        if "time_period_type" in st.session_state:
+            default_period_type = st.session_state["time_period_type"]
+
+        time_period_options = ["quarterly", "monthly"]
+        time_period_type = st.selectbox(
+            "Time Period",
+            options=time_period_options,
+            index=time_period_options.index(default_period_type),
+            format_func=lambda x: "Quarterly" if x == "quarterly" else "Monthly",
+        )
+
+        # Store selected time period in session state
+        st.session_state["time_period_type"] = time_period_type
+
+        # Capacity input - label changes based on selected time period
         default_capacity = APP_CONFIG.simulation.default_capacity_per_quarter
-        if "capacity_per_quarter" in st.session_state:
-            default_capacity = st.session_state["capacity_per_quarter"]
-        capacity_per_quarter = st.number_input("Capacity per Quarter (PD)", min_value=0.1, value=float(default_capacity), step=100.0, format="%.1f")
+        if time_period_type == "monthly":
+            # If no session state value exists, convert quarterly to monthly
+            if "capacity_value" not in st.session_state:
+                default_capacity = default_capacity / 3
+            capacity_label = "Capacity per Month (PD)"
+        else:
+            capacity_label = "Capacity per Quarter (PD)"
+
+        # Use value from session state if available
+        if "capacity_value" in st.session_state:
+            default_capacity = st.session_state["capacity_value"]
+
+        capacity_value = st.number_input(capacity_label, min_value=0.1, value=float(default_capacity), step=50.0, format="%.1f")
+
+        # Store capacity value in session state
+        st.session_state["capacity_value"] = capacity_value
 
         # Number of simulations slider - use value from session state if available
         default_simulations = APP_CONFIG.simulation.default_num_simulations
@@ -296,4 +333,4 @@ def display_sidebar_controls(file_path=""):
         # Run simulation button - enabled only when data is loaded
         run_simulation = st.button("🚀 Run Simulation", type="primary", disabled=not file_path)
 
-        return file_path, start_date, capacity_per_quarter, num_simulations, run_simulation
+        return file_path, start_date, capacity_value, time_period_type, num_simulations, run_simulation
