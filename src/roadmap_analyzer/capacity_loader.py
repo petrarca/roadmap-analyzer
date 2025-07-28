@@ -104,9 +104,23 @@ def load_capacity_data(file_path: str, sheet_name: str = "Capacity") -> Dict[str
         
         return capacity_dict
     
+    except pd.errors.EmptyDataError:
+        # Return empty dict if sheet is empty
+        return {}
+    except FileNotFoundError:
+        # Return empty dict if file doesn't exist
+        return {}
+    except ValueError as e:
+        # This is likely a "Worksheet named 'Capacity' not found" error, which is normal and expected
+        # Since capacity data is optional, we silently return an empty dict
+        if "not found" in str(e) and sheet_name in str(e):
+            return {}
+        # For other value errors, print a warning
+        print(f"Warning: Error loading capacity data: {e}")
+        return {}
     except Exception as e:
-        # Return empty dict if sheet doesn't exist or other errors
-        print(f"Note: Could not load capacity data: {e}")
+        # Return empty dict for other errors, but print a warning
+        print(f"Warning: Error loading capacity data: {e}")
         return {}
 
 
