@@ -9,24 +9,6 @@ import pandas as pd
 import streamlit as st
 
 
-def format_date(date):
-    """Format date for display"""
-    if date is None:
-        return "N/A"
-    return date.strftime("%b %d, %Y")
-
-
-def format_percentage(value):
-    """Format percentage for display"""
-    if value is None:
-        return "N/A"
-    return f"{value * 100:.1f}%"
-
-
-# Removed unused function create_statistics_dataframe
-# The functionality is now handled by _create_stats_dataframe
-
-
 def _create_stats_dataframe(stats):
     """Create a DataFrame from project statistics."""
     return pd.DataFrame(

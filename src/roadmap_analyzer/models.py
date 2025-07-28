@@ -50,7 +50,6 @@ class WorkItem(BaseModel):
         return v
 
     @field_validator("dependency")
-    @classmethod
     def validate_dependency(cls, v, info):
         """Ensure dependency doesn't reference itself."""
         if v is not None and "position" in info.data and v == info.data["position"]:
