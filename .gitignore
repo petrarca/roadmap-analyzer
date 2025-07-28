@@ -68,9 +68,12 @@ coverage.xml
 .~*
 
 # Only allow specific files in examples directory
+examples/**/*
 !examples/
 !examples/**/*.xlsx
 !examples/**/*.xls
 !examples/**/*.csv
 !examples/**/*.txt
-examples/**/*
+examples/**/~$*
+examples/**/*~
+examples/**/.~*
