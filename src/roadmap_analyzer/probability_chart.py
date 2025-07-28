@@ -92,10 +92,13 @@ def create_probability_chart(stats):
             tickformat="%b %Y",  # Format as month and year (e.g., Jan 2025)
             dtick="M1",  # Display ticks every month
             ticklabelmode="period",  # Show labels at the period boundaries
+            # Start with autorange enabled
+            autorange=True
         ),
         yaxis=dict(
             title="On-Time Probability (%)",
-            range=[-5, 105],
+            # Start with autorange enabled instead of fixed range
+            autorange=True,
             tickvals=[0, 20, 40, 50, 60, 80, 100],
             ticktext=["0%", "20%", "40%", "50%", "60%", "80%", "100%"],
         ),
