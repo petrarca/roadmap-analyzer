@@ -23,34 +23,8 @@ def format_percentage(value):
     return f"{value * 100:.1f}%"
 
 
-def create_statistics_dataframe(stats):
-    """
-    Create a pandas DataFrame from project statistics.
-
-    Args:
-        stats: Dictionary of project statistics
-
-    Returns:
-        Pandas DataFrame with formatted statistics
-    """
-    data = []
-
-    for project_name, project_stats in stats.items():
-        data.append(
-            {
-                "Project": project_name,
-                "Due Date": format_date(project_stats.due_date),
-                "Start P10": format_date(project_stats.start_p10),
-                "P10 (Best Case)": format_date(project_stats.p10),
-                "Start P50": format_date(project_stats.start_p50),
-                "P50 (Most Likely)": format_date(project_stats.p50),
-                "Start P90": format_date(project_stats.start_p90),
-                "P90 (Worst Case)": format_date(project_stats.p90),
-                "On-Time Probability": format_percentage(project_stats.on_time_probability),
-            }
-        )
-
-    return pd.DataFrame(data)
+# Removed unused function create_statistics_dataframe
+# The functionality is now handled by _create_stats_dataframe
 
 
 def _create_stats_dataframe(stats):

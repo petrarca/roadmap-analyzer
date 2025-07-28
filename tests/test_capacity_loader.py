@@ -14,7 +14,7 @@ from roadmap_analyzer.capacity_loader import (
     load_capacity_data,
     parse_period,
 )
-from roadmap_analyzer.config import AppConfig, load_config
+from roadmap_analyzer.config import load_config
 
 
 @pytest.fixture
@@ -174,22 +174,22 @@ def test_capacity_calculator_integration(app_config, test_excel_file):
 
     # Create capacity calculator with quarterly periods
     calculator_quarterly = CapacityCalculator(app_config, TimePeriodType.QUARTERLY, capacity_dict)
-    
+
     # Test that capacity overrides are correctly applied
     period_str, working_days, capacity_per_day = calculator_quarterly.get_period_info(date(2025, 1, 15))
     assert period_str == "2025-Q1"
-    
+
     # Calculate expected capacity per day (1500 / working days in Q1)
     expected_capacity = 1500 / working_days
     assert abs(capacity_per_day - expected_capacity) < 0.001  # Use approximate equality for floating point
-    
+
     # Create capacity calculator with monthly periods
     calculator_monthly = CapacityCalculator(app_config, TimePeriodType.MONTHLY, capacity_dict)
-    
+
     # Test that capacity overrides are correctly applied for monthly periods
     period_str, _, capacity_per_day = calculator_monthly.get_period_info(date(2026, 1, 15))
     assert period_str == "2026-01"
-    
+
     # Calculate expected capacity per day (500 / working days in Jan 2026)
     working_days = calculator_monthly.get_working_days_in_period(2026, 1)
     expected_capacity = 500 / working_days

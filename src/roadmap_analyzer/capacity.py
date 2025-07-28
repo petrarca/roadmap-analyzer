@@ -34,7 +34,7 @@ class CapacityCalculator:
         self.config = config
         self.period_type = period_type
         self._capacity_overrides: Dict[str, float] = {}
-        
+
         # Initialize with capacity dictionary if provided
         if capacity_dict:
             self._capacity_overrides.update(capacity_dict)

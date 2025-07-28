@@ -3,7 +3,6 @@ Capacity chart visualization module for roadmap analyzer.
 Handles the creation and formatting of bar chart visualization for capacity data.
 """
 
-import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 

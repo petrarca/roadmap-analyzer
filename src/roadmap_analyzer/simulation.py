@@ -146,7 +146,7 @@ class SimulationEngine:
         # Ensure start date is a working day
         current_date = self.ensure_working_day(start_date)
         remaining_effort = effort
-        
+
         # Capacity data is now handled by the capacity calculator
 
         # Pre-fetch period info for the current date to avoid repeated calculations
@@ -214,7 +214,7 @@ class SimulationEngine:
             Available capacity for the period
         """
         used_capacity = self.capacity_usage.get(period_str, 0)
-        
+
         # Capacity overrides are now handled by the capacity calculator
         period_capacity = capacity_per_period
 
