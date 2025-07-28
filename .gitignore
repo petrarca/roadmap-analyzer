@@ -21,6 +21,10 @@ wheels/
 *.egg
 MANIFEST
 
+# Include all files in samples directory
+!examples/
+!examples/**
+
 # Virtual environments
 .env
 .venv

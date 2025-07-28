@@ -88,3 +88,12 @@ class AppConfig(BaseModel):
 
 # Global configuration instance with explicit type annotation
 APP_CONFIG: AppConfig = AppConfig()
+
+
+def load_config() -> AppConfig:
+    """Load and return the application configuration.
+
+    Returns:
+        AppConfig: The application configuration instance
+    """
+    return APP_CONFIG
