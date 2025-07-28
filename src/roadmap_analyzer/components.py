@@ -50,7 +50,60 @@ def show_welcome_screen():
 
 def display_data_tab(work_items):
     """Display project data in a table format"""
-    st.subheader("📋 Project Data")
+
+    # Calculate summary metrics
+    total_best = sum(item.best_estimate for item in work_items)
+    total_likely = sum(item.most_likely_estimate for item in work_items)
+    total_worst = sum(item.worst_estimate for item in work_items)
+
+    # Calculate additional statistics
+    avg_likely = total_likely / len(work_items) if work_items else 0
+    uncertainty_ratio = total_worst / total_best if total_best > 0 else 0
+
+    # Find largest and smallest work items
+    largest_item = max(work_items, key=lambda x: x.most_likely_estimate) if work_items else None
+    smallest_item = min(work_items, key=lambda x: x.most_likely_estimate) if work_items else None
+
+    # Project summary section before the table
+
+    # Create a container with a border and background for the summary
+    with st.container():
+        # Project name header removed
+
+        # First row of metrics
+        row1_col1, row1_col2, row1_col3 = st.columns(3)
+        with row1_col1:
+            st.metric("Work Items", len(work_items))
+        with row1_col2:
+            st.metric("Avg. per Item", f"{avg_likely:,.0f} PD")
+        with row1_col3:
+            st.metric("Uncertainty Ratio", f"{uncertainty_ratio:.2f}x")
+
+        # Second row with estimates aligned
+        row2_col1, row2_col2, row2_col3 = st.columns(3)
+        with row2_col1:
+            st.metric("Best Estimate", f"{total_best:,.0f} PD")
+        with row2_col2:
+            st.metric("Likely Estimate", f"{total_likely:,.0f} PD")
+        with row2_col3:
+            st.metric("Worst Estimate", f"{total_worst:,.0f} PD")
+
+        # Third row with largest and smallest items
+        if largest_item and smallest_item:
+            row3_col1, row3_col2, row3_col3 = st.columns(3)
+            with row3_col1:
+                largest_name = largest_item.item
+                if len(largest_name) > 20:  # Truncate long names
+                    largest_name = largest_name[:17] + "..."
+                st.metric("Largest Item", largest_name, f"{largest_item.most_likely_estimate:,.0f} PD")
+            with row3_col2:
+                smallest_name = smallest_item.item
+                if len(smallest_name) > 20:  # Truncate long names
+                    smallest_name = smallest_name[:17] + "..."
+                st.metric("Smallest Item", smallest_name, f"{smallest_item.most_likely_estimate:,.0f} PD")
+            # Empty third column for alignment
+            with row3_col3:
+                pass
 
     # Create DataFrame from work items
     data = []
@@ -72,16 +125,7 @@ def display_data_tab(work_items):
     df = prepare_dataframe_for_display(df)
     st.dataframe(df, use_container_width=True)
 
-    # Display summary stats
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Total Projects", len(work_items))
-    with col2:
-        total_effort = sum(item.most_likely_estimate for item in work_items)
-        st.metric("Total Effort (hrs)", f"{total_effort:,.0f}")
-    with col3:
-        avg_effort = total_effort / len(work_items) if work_items else 0
-        st.metric("Avg. Effort per Project (hrs)", f"{avg_effort:,.0f}")
+    # No duplicate summary stats at the bottom
 
 
 def display_simulation_metrics(stats):
@@ -127,12 +171,13 @@ def display_simulation_metrics(stats):
     elif on_time_projects >= total_projects * 0.7:
         st.warning("⚠️ Some projects may face delays. Consider increasing capacity or adjusting timelines.")
     else:
-        st.error("🚨 Many projects are at risk of delays. Review capacity allocation and dependencies.")
+        st.error("🚨 Many work items are at risk of delays. Review capacity allocation and dependencies.")
 
 
 def display_sidebar_controls():
     """Display sidebar controls for simulation parameters"""
     with st.sidebar:
+        st.title("📊 Project Roadmap Monte Carlo Analysis")
         st.header("⚙️ Simulation Settings")
 
         # File uploader
@@ -147,8 +192,6 @@ def display_sidebar_controls():
             with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp_file:
                 tmp_file.write(uploaded_file.getvalue())
                 file_path = tmp_file.name
-
-            st.success(f"File uploaded successfully: {uploaded_file.name}")
 
         # Simulation parameters
         st.subheader("Parameters")
@@ -179,7 +222,7 @@ def display_sidebar_controls():
             step=100,
         )
 
-        # Run simulation button
-        run_simulation = st.button("🚀 Run Simulation", type="primary")
+        # Run simulation button - enabled only when data is loaded
+        run_simulation = st.button("🚀 Run Simulation", type="primary", disabled=not uploaded_file)
 
         return file_path, start_date, capacity_per_quarter, num_simulations, run_simulation

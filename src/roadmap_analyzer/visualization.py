@@ -102,7 +102,7 @@ def create_gantt_chart(stats, project_start_date, work_items):
         )
 
     fig.update_layout(
-        title="Project Timeline with Confidence Intervals",
+        title="Project timeline with confidence intervals",
         xaxis_title="Date",
         yaxis=dict(
             ticktext=[p[0] for p in sorted_projects],  # Already reversed to match data table

@@ -22,8 +22,7 @@ APP_CONFIG = load_config()
 # Page configuration using config model
 st.set_page_config(page_title=APP_CONFIG.ui.page_title, page_icon=APP_CONFIG.ui.page_icon, layout=APP_CONFIG.ui.layout)
 
-# Title and description
-st.title("📊 Project Roadmap Monte Carlo Analysis")
+# Description in main area
 st.markdown("Analyze project timelines with Monte Carlo simulation to assess on-time delivery probabilities")
 
 # Get default file path from command line arguments if provided
@@ -139,7 +138,7 @@ def main():
         return
 
     # Create main tabs for data view and simulation view
-    data_tab, simulation_tab = st.tabs(["📋 Project Data", "📊 Simulation Results"])
+    data_tab, simulation_tab = st.tabs(["📋 Roadmap data", "📊 Simulation results"])
 
     # Data tab content
     with data_tab:
