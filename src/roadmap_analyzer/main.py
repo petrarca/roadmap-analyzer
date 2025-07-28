@@ -1,14 +1,17 @@
 import sys
 from datetime import datetime, timedelta
+from typing import List
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+from roadmap_analyzer.capacity import CapacityCalculator, TimePeriodType
 from roadmap_analyzer.config import APP_CONFIG
 from roadmap_analyzer.data_loader import load_work_items
-from roadmap_analyzer.simulation import analyze_results, calculate_start_dates, run_monte_carlo_simulation
+from roadmap_analyzer.models import WorkItem
+from roadmap_analyzer.simulation import SimulationEngine
 from roadmap_analyzer.utils import convert_to_date, is_working_day
 
 # Page configuration using config model
@@ -72,6 +75,76 @@ st.sidebar.markdown("---")
 run_simulation = st.sidebar.button("🚀 Run Monte Carlo Simulation", type="primary")
 
 
+# DataFrame utilities for Streamlit display
+
+
+def prepare_dataframe_for_display(df: pd.DataFrame) -> pd.DataFrame:
+    """Prepare DataFrame for Streamlit display with PyArrow compatibility.
+
+    This function ensures all columns have types that are compatible with PyArrow
+    serialization, preventing Streamlit display errors.
+
+    Args:
+        df: DataFrame to prepare
+
+    Returns:
+        DataFrame with PyArrow-compatible column types
+    """
+    df_copy = df.copy()
+
+    # Handle columns that might contain mixed int/None values
+    for col in df_copy.columns:
+        # Check for columns with mixed numeric/None values (common PyArrow issue)
+        if df_copy[col].dtype in ["object", "float64"] and col.lower() in ["dependency", "dependencies"]:
+            # Convert to nullable integer type for PyArrow compatibility
+            df_copy[col] = df_copy[col].astype("Int64")
+        elif df_copy[col].dtype == "object":
+            # Check if column contains only numeric values and None/NaN
+            non_null_values = df_copy[col].dropna()
+            if len(non_null_values) > 0:
+                # Try to detect if all non-null values are numeric
+                try:
+                    # Test conversion to numeric
+                    pd.to_numeric(non_null_values, errors="raise")
+                    # If successful, convert to nullable integer
+                    df_copy[col] = pd.to_numeric(df_copy[col], errors="coerce").astype("Int64")
+                except (ValueError, TypeError):
+                    # Keep as object type if not numeric
+                    pass
+
+    return df_copy
+
+
+def create_work_items_display_dataframe(work_items: List[WorkItem]) -> pd.DataFrame:
+    """Create a display-ready DataFrame from WorkItem objects.
+
+    Args:
+        work_items: List of WorkItem objects
+
+    Returns:
+        PyArrow-compatible DataFrame ready for Streamlit display
+    """
+    display_df = pd.DataFrame(
+        [
+            {
+                "Position": item.position,
+                "Item": item.initiative,
+                "Due date": item.due_date.strftime("%Y-%m-%d"),
+                "Start date": item.start_date.strftime("%Y-%m-%d") if item.start_date else "",
+                "Priority": item.priority if item.priority else "",
+                "Dependency": item.dependency,  # Will be handled by prepare_dataframe_for_display
+                "Best": item.best_estimate,
+                "Likely": item.most_likely_estimate,
+                "Worst": item.worst_estimate,
+                "Expected Effort": round(item.expected_effort, 1),
+            }
+            for item in work_items
+        ]
+    )
+
+    return prepare_dataframe_for_display(display_df)
+
+
 # Visualization functions
 
 
@@ -84,22 +157,25 @@ def create_gantt_chart(stats, project_start_date, work_items):
     # Sort projects by position
     project_order = {item.initiative: item.position for item in work_items}
     sorted_projects = sorted(stats.items(), key=lambda x: project_order[x[0]])
+    # Reverse the order to match the data table (C1 at the top)
+    sorted_projects = list(reversed(sorted_projects))
 
     for idx, (project_name, project_stats) in enumerate(sorted_projects):
-        y_pos = len(sorted_projects) - idx - 1
+        # Use idx directly to maintain original data order (top to bottom)
+        y_pos = idx
 
-        # Get the start dates for this project (accounting for dependencies)
-        if "start_p10" not in project_stats:
-            # Calculate start dates
-            calculate_start_dates(stats, work_items)
+        # Start dates should already be calculated in run_simulation_workflow
+        # If they're missing, skip this project (shouldn't happen in normal flow)
+        if project_stats.start_p10 is None:
+            continue
 
         # P90 range (worst case)
         fig.add_trace(
             go.Scatter(
                 x=[project_stats.start_p90, project_stats.p90],
-                y=[y_pos, y_pos],
+                y=[y_pos - 0.15, y_pos - 0.15],  # Offset to avoid overlap
                 mode="lines",
-                line=dict(color="lightcoral", width=20),
+                line=dict(color="#FF7F7F", width=20),  # Brighter red for worst case
                 name="P90 Range",
                 showlegend=(idx == 0),
                 hovertemplate=f"{project_name}<br>Start: %{{x[0]|%b %d, %Y}}<br>P90: %{{x[1]|%b %d, %Y}}<extra></extra>",
@@ -110,9 +186,9 @@ def create_gantt_chart(stats, project_start_date, work_items):
         fig.add_trace(
             go.Scatter(
                 x=[project_stats.start_p50, project_stats.p50],
-                y=[y_pos, y_pos],
+                y=[y_pos, y_pos],  # Keep at center
                 mode="lines",
-                line=dict(color="lightsalmon", width=15),
+                line=dict(color="#FFA500", width=15),  # Orange for most likely
                 name="P50 Range",
                 showlegend=(idx == 0),
                 hovertemplate=f"{project_name}<br>Start: %{{x[0]|%b %d, %Y}}<br>P50: %{{x[1]|%b %d, %Y}}<extra></extra>",
@@ -123,32 +199,49 @@ def create_gantt_chart(stats, project_start_date, work_items):
         fig.add_trace(
             go.Scatter(
                 x=[project_stats.start_p10, project_stats.p10],
-                y=[y_pos, y_pos],
+                y=[y_pos + 0.15, y_pos + 0.15],  # Offset to avoid overlap
                 mode="lines",
-                line=dict(color="lightgreen", width=10),
+                line=dict(color="#4CAF50", width=10),  # Deeper green for best case
                 name="P10 Range",
                 showlegend=(idx == 0),
                 hovertemplate=f"{project_name}<br>Start: %{{x[0]|%b %d, %Y}}<br>P10: %{{x[1]|%b %d, %Y}}<extra></extra>",
             )
         )
 
-        # Due date marker
+        # Due date marker - make it more prominent
         fig.add_trace(
             go.Scatter(
                 x=[project_stats.due_date],
                 y=[y_pos],
                 mode="markers",
-                marker=dict(symbol="line-ns", size=20, color="blue"),
+                marker=dict(symbol="diamond", size=12, color="blue", line=dict(color="darkblue", width=2)),
                 name="Due Date",
                 showlegend=(idx == 0),
-                hovertemplate=f"{project_name}<br>Due: %{{x|%b %d, %Y}}<extra></extra>",
+                hovertemplate=f"{project_name}<br>Due Date: %{{x|%b %d, %Y}}<extra></extra>",
+            )
+        )
+
+        # Add vertical line for due date to make it even more visible
+        fig.add_trace(
+            go.Scatter(
+                x=[project_stats.due_date, project_stats.due_date],
+                y=[y_pos - 0.3, y_pos + 0.3],
+                mode="lines",
+                line=dict(color="blue", width=3, dash="dash"),
+                name="Due Date Line",
+                showlegend=False,
+                hovertemplate=f"{project_name}<br>Due Date: %{{x[0]|%b %d, %Y}}<extra></extra>",
             )
         )
 
     fig.update_layout(
         title="Project Timeline with Confidence Intervals",
         xaxis_title="Date",
-        yaxis=dict(ticktext=[p[0] for p in sorted_projects], tickvals=list(range(len(sorted_projects))), tickmode="array"),
+        yaxis=dict(
+            ticktext=[p[0] for p in sorted_projects],  # Already reversed to match data table
+            tickvals=list(range(len(sorted_projects))),
+            tickmode="array",
+        ),
         height=100 + len(sorted_projects) * 80,
         showlegend=True,
         hovermode="closest",
@@ -164,14 +257,8 @@ def create_probability_chart(stats):
     probabilities = [stats[p].on_time_probability for p in projects]
 
     # Color based on probability using config
-    colors = [
-        APP_CONFIG.ui.probability_colors.high
-        if p >= 80
-        else APP_CONFIG.ui.probability_colors.medium
-        if p >= 30
-        else APP_CONFIG.ui.probability_colors.low
-        for p in probabilities
-    ]
+    prob_colors = APP_CONFIG.ui.probability_colors
+    colors = [prob_colors.high if p >= 80 else prob_colors.medium if p >= 30 else prob_colors.low for p in probabilities]
 
     fig = go.Figure(data=[go.Bar(x=projects, y=probabilities, text=[f"{p:.1f}%" for p in probabilities], textposition="auto", marker_color=colors)])
 
@@ -223,25 +310,8 @@ def display_data_tab(work_items):
     """Display the data tab with loaded work items."""
     st.subheader("Loaded Project Data")
 
-    # Convert WorkItems to DataFrame for display
-    display_df = pd.DataFrame(
-        [
-            {
-                "Position": item.position,
-                "Item": item.initiative,
-                "Due date": item.due_date.strftime("%Y-%m-%d"),
-                "Start date": item.start_date.strftime("%Y-%m-%d") if item.start_date else "",
-                "Priority": item.priority if item.priority else "",
-                "Dependency": item.dependency if item.dependency is not None else "",
-                "Best": item.best_estimate,
-                "Likely": item.most_likely_estimate,
-                "Worst": item.worst_estimate,
-                "Expected Effort": round(item.expected_effort, 1),
-            }
-            for item in work_items
-        ]
-    )
-
+    # Create display-ready DataFrame using centralized function
+    display_df = create_work_items_display_dataframe(work_items)
     st.dataframe(display_df, use_container_width=True)
 
 
@@ -376,16 +446,20 @@ def run_simulation_workflow(work_items, capacity_per_quarter, start_date, num_si
         progress_bar.progress(progress)
         status_text.text(message)
 
+    # Create capacity calculator and simulation engine
+    capacity_calculator = CapacityCalculator(APP_CONFIG, TimePeriodType.QUARTERLY)
+    simulation_engine = SimulationEngine(APP_CONFIG, capacity_calculator)
+
     # Run simulation with progress callback
-    simulation_results = run_monte_carlo_simulation(
-        work_items, capacity_per_quarter, start_date, num_simulations, APP_CONFIG, progress_callback=update_progress
+    simulation_results = simulation_engine.run_monte_carlo_simulation(
+        work_items, capacity_per_quarter, start_date, num_simulations, progress_callback=update_progress
     )
 
     # Analyze results
-    stats = analyze_results(simulation_results, work_items)
+    stats = simulation_engine.analyze_results(simulation_results, work_items)
 
     # Calculate start dates for Gantt chart
-    calculate_start_dates(stats, work_items)
+    simulation_engine.calculate_start_dates(stats, work_items, start_date)
 
     return stats
 
@@ -416,6 +490,8 @@ def main():
                 "Worst": [3120, 325, 1820],
             }
         )
+        # Use centralized function to ensure PyArrow compatibility
+        example_df = prepare_dataframe_for_display(example_df)
         st.dataframe(example_df)
         return
 

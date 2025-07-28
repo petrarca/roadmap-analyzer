@@ -47,9 +47,9 @@ def load_project_data(file_path: str, config: AppConfig) -> pd.DataFrame:
         # Convert due dates to datetime
         df["Due date"] = pd.to_datetime(df["Due date"])
 
-        # Clean up dependency column (convert to int or None)
-        # Make sure to handle NaN values properly
-        df["Dependency"] = df["Dependency"].apply(lambda x: int(x) if pd.notna(x) else None)
+        # Clean up dependency column for PyArrow compatibility
+        # Convert to nullable integer type to avoid mixed type issues
+        df["Dependency"] = df["Dependency"].astype("Int64")  # Nullable integer type
 
         return df
 
@@ -98,14 +98,14 @@ def convert_to_work_items(df: pd.DataFrame, config: AppConfig) -> List[WorkItem]
 
             item_data = {
                 "position": row["Position"],
-                "Item": row["Item"],
+                "Item": row["Item"],  # Uses alias for initiative field
                 "due_date": row["Due date"],
-                "Start date": start_date,
-                "Priority": priority,
+                "Start date": start_date,  # Uses alias for start_date field
+                "Priority": priority,  # Uses alias for priority field
                 "dependency": dependency,
-                "Best": row["Best"],
-                "Likely": row["Likely"],
-                "Worst": row["Worst"],
+                "Best": row["Best"],  # Uses alias for best_estimate field
+                "Likely": row["Likely"],  # Uses alias for most_likely_estimate field
+                "Worst": row["Worst"],  # Uses alias for worst_estimate field
             }
             work_item = WorkItem(**item_data)
             work_items.append(work_item)

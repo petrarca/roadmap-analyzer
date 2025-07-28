@@ -86,5 +86,5 @@ class AppConfig(BaseModel):
     model_config = ConfigDict(validate_assignment=True, extra="forbid")
 
 
-# Global configuration instance
-APP_CONFIG = AppConfig()
+# Global configuration instance with explicit type annotation
+APP_CONFIG: AppConfig = AppConfig()
