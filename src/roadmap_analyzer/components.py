@@ -51,14 +51,8 @@ def display_status_tab():
         st.info("No notifications yet. Status messages will appear here.")
         return
 
-    # Add clear notifications button
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.subheader(f"📝 Status Messages ({len(st.session_state.notifications)})")
-    with col2:
-        if st.button("Clear All"):
-            st.session_state.notifications = []
-            st.experimental_rerun()
+    # Display status message header without clear button
+    st.subheader(f"📝 Status Messages ({len(st.session_state.notifications)})")
 
     # Display all notifications in reverse chronological order (newest first)
     for notification in reversed(st.session_state.notifications):

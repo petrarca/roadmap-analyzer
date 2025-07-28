@@ -17,6 +17,8 @@ from roadmap_analyzer.components import (
 )
 from roadmap_analyzer.config import load_config
 from roadmap_analyzer.config_loader import load_and_apply_config
+from roadmap_analyzer.capacity_chart import create_capacity_chart
+from roadmap_analyzer.capacity_loader import create_capacity_dataframe, load_capacity_data
 from roadmap_analyzer.data_loader import load_work_items
 from roadmap_analyzer.gantt_chart import create_gantt_chart
 from roadmap_analyzer.models import WorkItem
@@ -99,7 +101,7 @@ def create_work_items_display_dataframe(work_items: List[WorkItem]) -> pd.DataFr
 # Detailed statistics display moved to statistics.py
 
 
-def run_simulation_workflow(work_items, capacity_value, start_date, time_period_type, num_simulations):
+def run_simulation_workflow(work_items, capacity_value, start_date, time_period_type, num_simulations, capacity_dict=None):
     """Run the Monte Carlo simulation workflow.
 
     Args:
@@ -108,6 +110,7 @@ def run_simulation_workflow(work_items, capacity_value, start_date, time_period_
         start_date: Start date for the simulation
         time_period_type: Type of time period ("quarterly" or "monthly")
         num_simulations: Number of Monte Carlo simulations to run
+        capacity_dict: Optional dictionary mapping period strings to capacity values
 
     Returns:
         Simulation statistics
@@ -128,15 +131,17 @@ def run_simulation_workflow(work_items, capacity_value, start_date, time_period_
         progress_bar.progress(progress)
         status_text.text(message)
 
-    # Create capacity calculator with the selected time period
+    # Create capacity calculator with the selected time period and capacity data
     period_type = TimePeriodType.QUARTERLY if time_period_type == "quarterly" else TimePeriodType.MONTHLY
-    capacity_calculator = CapacityCalculator(APP_CONFIG, period_type)
+    capacity_calculator = CapacityCalculator(APP_CONFIG, period_type, capacity_dict)
     simulation_engine = SimulationEngine(APP_CONFIG, capacity_calculator)
 
     # Run simulation with progress callback
     # The capacity calculator already has the correct period type from initialization
+    # Note: capacity_dict is now passed directly to the CapacityCalculator constructor
     simulation_results = simulation_engine.run_monte_carlo_simulation(
-        work_items, capacity_value, start_date, num_simulations, progress_callback=update_progress
+        work_items, capacity_value, start_date, num_simulations, 
+        progress_callback=update_progress
     )
 
     # Analyze results
@@ -202,12 +207,52 @@ def main():
         show_welcome_screen()  # Show welcome screen with example format
         return
 
-    # Create main tabs for data view, simulation view, and status
-    data_tab, simulation_tab, status_tab = st.tabs(["📋 Roadmap data", "📊 Simulation results", "📝 Status"])
+    # Load capacity data if available
+    capacity_dict = load_capacity_data(file_path)
+    
+    # Create main tabs for data view, capacity view, simulation view, and status
+    data_tab, capacity_tab, simulation_tab, status_tab = st.tabs(["📋 Roadmap data", "⚡ Capacity data", "📊 Simulation results", "📝 Status"])
 
     # Data tab content
     with data_tab:
         display_data_tab(work_items)
+        
+    # Capacity tab content
+    with capacity_tab:
+        st.subheader("⚡ Capacity Planning")
+        
+        # Create capacity dataframe for visualization
+        period_type = TimePeriodType.MONTHLY if time_period_type == "monthly" else TimePeriodType.QUARTERLY
+        
+        # Find the earliest start date and latest end date from work items
+        earliest_start = start_date
+        latest_end = max([item.due_date for item in work_items])
+        
+        # Create capacity dataframe
+        capacity_df = create_capacity_dataframe(
+            capacity_dict,
+            earliest_start,
+            latest_end,
+            period_type,
+            capacity_value
+        )
+        
+        # Display capacity data in a table
+        if not capacity_dict:
+            st.info("No custom capacity data found. Using default capacity values.")
+        else:
+            # Use notification system instead of displaying message in the tab
+            add_notification(f"✅ Loaded {len(capacity_dict)} custom capacity entries from Excel file", "info")
+        
+        # Create and display capacity chart
+        capacity_chart = create_capacity_chart(capacity_df)
+        st.plotly_chart(capacity_chart, use_container_width=True)
+        
+        # Display capacity data table
+        if not capacity_df.empty:
+            display_df = capacity_df[["DisplayPeriod", "Capacity"]].copy()
+            display_df.columns = ["Period", "Capacity (PD)"]
+            st.dataframe(display_df, use_container_width=True)
 
     # Status tab content
     with status_tab:

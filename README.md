@@ -36,6 +36,16 @@ Or directly with:
 uv run -m streamlit run src/roadmap_analyzer/main.py
 ```
 
+## Input Data Format
+
+The application accepts Excel files with specific sheets and column formats:
+
+- **Data Sheet**: Contains work items, dependencies, and effort estimates
+- **Config Sheet**: Contains simulation configuration parameters
+- **Capacity Sheet**: Contains period-specific capacity values
+
+For detailed information about the Excel file format, see [Excel Format Documentation](docs/excel_format.md).
+
 ## Examples
 
 The project includes an `examples` directory containing sample data files and usage scenarios to help you get started with the roadmap analyzer.

@@ -4,7 +4,7 @@ This module provides flexible capacity calculations that can work with different
 (quarters, months) and capacity configurations.
 """
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from enum import Enum
 from functools import lru_cache
 from typing import Dict, Tuple
@@ -23,16 +23,21 @@ class TimePeriodType(Enum):
 class CapacityCalculator:
     """Flexible capacity calculator supporting different time periods and configurations."""
 
-    def __init__(self, config: AppConfig, period_type: TimePeriodType = TimePeriodType.QUARTERLY):
+    def __init__(self, config: AppConfig, period_type: TimePeriodType = TimePeriodType.QUARTERLY, capacity_dict: Dict[str, float] = None):
         """Initialize the capacity calculator.
 
         Args:
             config: Application configuration
             period_type: Type of time period to use for calculations
+            capacity_dict: Optional dictionary mapping period strings to capacity values
         """
         self.config = config
         self.period_type = period_type
         self._capacity_overrides: Dict[str, float] = {}
+        
+        # Initialize with capacity dictionary if provided
+        if capacity_dict:
+            self._capacity_overrides.update(capacity_dict)
 
     def set_capacity_override(self, period_identifier: str, capacity: float) -> None:
         """Set a capacity override for a specific time period.
@@ -43,16 +48,34 @@ class CapacityCalculator:
         """
         self._capacity_overrides[period_identifier] = capacity
 
-    def get_working_days_in_period(self, year: int, period: int) -> int:
+    def get_working_days_in_period(self, year_or_date, period=None) -> int:
         """Calculate the number of working days in a specific time period.
 
+        This method can be called in two ways:
+        1. get_working_days_in_period(year, period) - with year and period as separate arguments
+        2. get_working_days_in_period(date_obj) - with a date object
+
         Args:
-            year: The year
-            period: The period number (1-4 for quarters, 1-12 for months)
+            year_or_date: Either the year (int) or a date object (datetime.date)
+            period: The period number (1-4 for quarters, 1-12 for months), required if year_or_date is an int
 
         Returns:
             Number of working days in the period
         """
+        # Handle case where a date object is passed
+        if isinstance(year_or_date, date):
+            date_obj = year_or_date
+            year = date_obj.year
+            if self.period_type == TimePeriodType.QUARTERLY:
+                period = (date_obj.month - 1) // 3 + 1
+            else:  # MONTHLY
+                period = date_obj.month
+        else:
+            # Handle case where year and period are passed separately
+            year = year_or_date
+            if period is None:
+                raise ValueError("Period must be provided when year is an integer")
+
         if self.period_type == TimePeriodType.QUARTERLY:
             return self._get_working_days_in_quarter(year, period)
         elif self.period_type == TimePeriodType.MONTHLY:
@@ -95,6 +118,22 @@ class CapacityCalculator:
                 working_days += 1
             current_date += timedelta(days=1)
         return working_days
+
+    def get_period_identifier(self, date_obj: datetime.date) -> str:
+        """Get the period identifier string for a given date.
+
+        Args:
+            date_obj: The date to get period identifier for
+
+        Returns:
+            Period identifier string (e.g., "2025-Q1" or "2025-01")
+        """
+        if self.period_type == TimePeriodType.QUARTERLY:
+            return get_quarter_from_date(date_obj)
+        elif self.period_type == TimePeriodType.MONTHLY:
+            return f"{date_obj.year}-{date_obj.month:02d}"
+        else:
+            raise ValueError(f"Unsupported period type: {self.period_type}")
 
     def get_period_info(self, date_obj: datetime.date) -> Tuple[str, int, float]:
         """Get period information including capacity per working day.

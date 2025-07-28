@@ -1,7 +1,6 @@
 """Monte Carlo simulation for project roadmap analysis."""
 
 from datetime import datetime, timedelta
-from functools import lru_cache
 from typing import Callable, Dict, List, Optional
 
 from roadmap_analyzer.capacity import (
@@ -124,7 +123,6 @@ class SimulationEngine:
 
         return project_start_date
 
-    @lru_cache(maxsize=None)
     def _calculate_completion_date(
         self,
         start_date: datetime.date,
@@ -148,17 +146,21 @@ class SimulationEngine:
         # Ensure start date is a working day
         current_date = self.ensure_working_day(start_date)
         remaining_effort = effort
+        
+        # Capacity data is now handled by the capacity calculator
 
         # Pre-fetch period info for the current date to avoid repeated calculations
         # The capacity calculator already has the correct period type from initialization
-        period_str, working_days_in_period, _ = self.capacity_calculator.get_period_info(current_date)
+        period_str = self.capacity_calculator.get_period_identifier(current_date)
 
-        # Check if we can complete the work in the current period
+        # Get available capacity for this period
         available_capacity = self._get_available_capacity(period_str, current_date, capacity_per_period)
 
         if available_capacity >= remaining_effort:
             # Work can be completed in this period
             self.capacity_usage[period_str] = self.capacity_usage.get(period_str, 0) + remaining_effort
+            # Get working days in period
+            working_days_in_period = self.capacity_calculator.get_working_days_in_period(current_date)
             return self._calculate_exact_completion_date(current_date, remaining_effort, capacity_per_period, working_days_in_period)
 
         # Work spans multiple quarters
@@ -212,13 +214,16 @@ class SimulationEngine:
             Available capacity for the period
         """
         used_capacity = self.capacity_usage.get(period_str, 0)
+        
+        # Capacity overrides are now handled by the capacity calculator
+        period_capacity = capacity_per_period
 
         # Calculate remaining capacity in the period from the current date
         # The capacity calculator already knows the time period type from its initialization
-        _, remaining_capacity = self.capacity_calculator.calculate_remaining_capacity(current_date, capacity_per_period)
+        _, remaining_capacity = self.capacity_calculator.calculate_remaining_capacity(current_date, period_capacity)
 
         # The available capacity is the minimum of remaining capacity and unused capacity
-        available_capacity = min(remaining_capacity, capacity_per_period - used_capacity)
+        available_capacity = min(remaining_capacity, period_capacity - used_capacity)
 
         return max(0, available_capacity)
 
@@ -305,7 +310,11 @@ class SimulationEngine:
         effort_per_working_day = capacity_per_quarter / working_days_in_quarter
 
         # Calculate how many working days are needed to complete the effort
-        working_days_needed = effort_this_quarter / effort_per_working_day
+        # Avoid division by zero
+        if effort_per_working_day > 0:
+            working_days_needed = effort_this_quarter / effort_per_working_day
+        else:
+            working_days_needed = 0
 
         # Add the working days to the current date
         completion_date = add_working_days(current_date, int(working_days_needed))
@@ -324,11 +333,11 @@ class SimulationEngine:
 
         Args:
             work_items: List of WorkItem objects to simulate
-            capacity_per_period: Available capacity per period in person-days
+            capacity_per_period: Default capacity per period in person-days (used when period not in capacity_dict)
             start_date: Project start date
             num_simulations: Number of simulation runs to perform
             progress_callback: Optional callback function for progress updates
-            time_period_type: Type of time period ("quarterly" or "monthly")
+            capacity_dict: Optional dictionary mapping period strings to capacity values
 
         Returns:
             List of SimulationRun objects containing results from all simulations
