@@ -98,7 +98,7 @@ def convert_to_work_items(df: pd.DataFrame, config: AppConfig) -> List[WorkItem]
 
             item_data = {
                 "position": row["Position"],
-                "Item": row["Item"],  # Uses alias for initiative field
+                "Item": row["Item"],
                 "due_date": row["Due date"],
                 "Start date": start_date,  # Uses alias for start_date field
                 "Priority": priority,  # Uses alias for priority field

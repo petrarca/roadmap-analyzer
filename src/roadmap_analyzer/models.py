@@ -15,7 +15,7 @@ class WorkItem(BaseModel):
 
     position: int = Field(..., description="Position/order of the work item in the roadmap", ge=1)
 
-    initiative: str = Field(..., alias="Item", description="Name or title of the work item/initiative", min_length=1)
+    item: str = Field(..., alias="Item", description="Name or title of the work item", min_length=1)
 
     due_date: datetime = Field(..., description="Target due date for the work item")
 
@@ -66,7 +66,7 @@ class WorkItem(BaseModel):
 
     def __str__(self) -> str:
         """String representation of the work item."""
-        return f"WorkItem({self.position}: {self.initiative})"
+        return f"WorkItem({self.position}: {self.item})"
 
     def __repr__(self) -> str:
         """Detailed string representation."""
@@ -75,7 +75,7 @@ class WorkItem(BaseModel):
         start_date_str = self.start_date.strftime("%Y-%m-%d") if self.start_date and hasattr(self.start_date, "strftime") else None
 
         return (
-            f"WorkItem(position={self.position}, initiative='{self.initiative}', "
+            f"WorkItem(position={self.position}, item='{self.item}', "
             f"estimates=({self.best_estimate}, {self.most_likely_estimate}, {self.worst_estimate}), "
             f"due_date={due_date_str}, start_date={start_date_str}, "
             f"priority={self.priority}, dependency={self.dependency})"
@@ -102,7 +102,7 @@ class WorkItem(BaseModel):
 class SimulationResult(BaseModel):
     """Represents a single project result from a simulation run."""
 
-    name: str = Field(..., description="Name/initiative of the work item")
+    name: str = Field(..., description="Name of the work item")
     position: int = Field(..., description="Position/ID of the work item")
     effort: float = Field(..., description="Sampled effort for this simulation run")
     start_date: datetime = Field(..., description="Start date for the work item")

@@ -22,7 +22,7 @@ def create_gantt_chart(stats, project_start_date, work_items):
     fig = go.Figure()
 
     # Sort projects by position
-    project_order = {item.initiative: item.position for item in work_items}
+    project_order = {item.item: item.position for item in work_items}
     sorted_projects = sorted(stats.items(), key=lambda x: project_order[x[0]])
     # Reverse the order to match the data table (C1 at the top)
     sorted_projects = list(reversed(sorted_projects))

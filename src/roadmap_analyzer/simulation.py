@@ -94,7 +94,7 @@ class SimulationEngine:
 
         # Create and return a SimulationResult object
         return SimulationResult(
-            name=work_item.initiative,
+            name=work_item.item,
             position=work_item.position,
             effort=effort,
             start_date=project_start_date,
@@ -308,7 +308,7 @@ class SimulationEngine:
         stats = {}
 
         # Get project names and due dates from work items
-        project_names = [item.initiative for item in work_items]
+        project_names = [item.item for item in work_items]
         due_dates = [item.due_date for item in work_items]
 
         for idx, project_name in enumerate(project_names):
@@ -371,7 +371,7 @@ class SimulationEngine:
         # Second pass: update start dates based on dependencies
         for project_name, project_stats in stats.items():
             # Find the work item for this project
-            work_item = next((item for item in work_items if item.initiative == project_name), None)
+            work_item = next((item for item in work_items if item.item == project_name), None)
             if not work_item or not work_item.has_dependency:
                 continue
 
@@ -384,7 +384,7 @@ class SimulationEngine:
                 continue
 
             # Get the dependent project name
-            dependent_project = dependent_work_item.initiative
+            dependent_project = dependent_work_item.item
             if dependent_project not in stats:
                 continue
 

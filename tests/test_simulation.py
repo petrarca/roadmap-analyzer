@@ -37,7 +37,7 @@ class TestSimulation(unittest.TestCase):
         # Sample work item
         self.work_item = WorkItem(
             position=1,
-            initiative="Test Project",
+            item="Test Project",
             best_estimate=10,
             most_likely_estimate=15,
             worst_estimate=25,
@@ -172,7 +172,7 @@ class TestSimulation(unittest.TestCase):
         # Create two work items with dependency
         work_item1 = WorkItem(
             position=1,
-            initiative="Project A",
+            item="Project A",
             best_estimate=8,
             most_likely_estimate=10,
             worst_estimate=15,
@@ -183,7 +183,7 @@ class TestSimulation(unittest.TestCase):
 
         work_item2 = WorkItem(
             position=2,
-            initiative="Project B",
+            item="Project B",
             best_estimate=15,
             most_likely_estimate=20,
             worst_estimate=30,

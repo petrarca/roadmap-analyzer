@@ -48,7 +48,7 @@ def create_work_items_display_dataframe(work_items: List[WorkItem]) -> pd.DataFr
         [
             {
                 "Position": item.position,
-                "Item": item.initiative,
+                "Item": item.item,
                 "Due date": item.due_date.strftime("%Y-%m-%d"),
                 "Start date": item.start_date.strftime("%Y-%m-%d") if item.start_date else "",
                 "Priority": item.priority if item.priority else "",

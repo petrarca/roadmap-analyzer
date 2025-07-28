@@ -58,7 +58,7 @@ def display_data_tab(work_items):
         data.append(
             {
                 "Position": item.position,
-                "Initiative": item.initiative,
+                "Item": item.item,
                 "Due Date": item.due_date.strftime("%d/%m/%Y") if item.due_date else "N/A",
                 "Dependency": item.dependency,
                 "Best (hrs)": item.best_estimate,
@@ -163,7 +163,7 @@ def display_sidebar_controls():
 
         # Capacity per quarter slider
         capacity_per_quarter = st.slider(
-            "Capacity per Quarter (hours)",
+            "Capacity per Quarter (PD)",
             min_value=500,
             max_value=5000,
             value=2000,
