@@ -1,6 +1,6 @@
 """Monte Carlo simulation for project roadmap analysis."""
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Callable, Dict, List, Optional
 
 from roadmap_analyzer.capacity import (
@@ -24,7 +24,7 @@ class SimulationEngine:
     state management and configuration handling.
     """
 
-    def __init__(self, config: AppConfig, capacity_calculator: Optional[CapacityCalculator] = None):
+    def __init__(self, config: AppConfig, capacity_calculator: Optional[CapacityCalculator] = None) -> None:
         """Initialize the simulation engine.
 
         Args:
@@ -37,7 +37,7 @@ class SimulationEngine:
 
     def _reset_state(self) -> None:
         """Reset the internal state for a new simulation run."""
-        self.completion_dates: Dict[int, datetime.date] = {}
+        self.completion_dates: Dict[int, date] = {}
         self.capacity_usage: Dict[str, float] = {}
 
     def set_capacity_override(self, period_identifier: str, capacity: float) -> None:
@@ -49,7 +49,7 @@ class SimulationEngine:
         """
         self.capacity_calculator.set_capacity_override(period_identifier, capacity)
 
-    def ensure_working_day(self, date_obj: datetime.date) -> datetime.date:
+    def ensure_working_day(self, date_obj: date) -> date:
         """Ensure the given date is a working day (Mon-Fri).
         If it's not, return the next working day.
 
@@ -67,7 +67,7 @@ class SimulationEngine:
     def _simulate_single_work_item(
         self,
         work_item: WorkItem,
-        start_date: datetime.date,
+        start_date: date,
         capacity_per_period: float,
     ) -> SimulationResult:
         """Simulate a single work item and calculate its completion date.
@@ -103,7 +103,7 @@ class SimulationEngine:
             on_time=convert_to_date(completion_date) <= convert_to_date(work_item.due_date),
         )
 
-    def _determine_start_date(self, work_item: WorkItem, default_start_date: datetime.date) -> datetime.date:
+    def _determine_start_date(self, work_item: WorkItem, default_start_date: date) -> date:
         """Determine the start date for a work item considering dependencies and optional start date.
 
         Args:
@@ -133,10 +133,10 @@ class SimulationEngine:
 
     def _calculate_completion_date(
         self,
-        start_date: datetime.date,
+        start_date: date,
         effort: float,
         capacity_per_period: float,
-    ) -> datetime.date:
+    ) -> date:
         """Calculate the completion date for a work item based on effort and capacity.
 
         Args:

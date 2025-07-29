@@ -6,7 +6,7 @@ This module provides flexible capacity calculations that can work with different
 
 from datetime import date, datetime, timedelta
 from enum import Enum
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple, Union
 
 import streamlit as st
 
@@ -24,7 +24,7 @@ class TimePeriodType(Enum):
 class CapacityCalculator:
     """Flexible capacity calculator supporting different time periods and configurations."""
 
-    def __init__(self, config: AppConfig, period_type: TimePeriodType = TimePeriodType.QUARTERLY, capacity_dict: Dict[str, float] = None):
+    def __init__(self, config: AppConfig, period_type: TimePeriodType = TimePeriodType.QUARTERLY, capacity_dict: Dict[str, float] = None) -> None:
         """Initialize the capacity calculator.
 
         Args:
@@ -49,7 +49,7 @@ class CapacityCalculator:
         """
         self._capacity_overrides[period_identifier] = capacity
 
-    def get_working_days_in_period(self, year_or_date, period=None) -> int:
+    def get_working_days_in_period(self, year_or_date: Union[int, date], period: Optional[int] = None) -> int:
         """Calculate the number of working days in a specific time period.
 
         This method can be called in two ways:
@@ -78,14 +78,15 @@ class CapacityCalculator:
                 raise ValueError("Period must be provided when year is an integer")
 
         if self.period_type == TimePeriodType.QUARTERLY:
-            return self._get_working_days_in_quarter(year, period)
+            return CapacityCalculator._get_working_days_in_quarter(year, period)
         elif self.period_type == TimePeriodType.MONTHLY:
             return self._get_working_days_in_month(year, period)
         else:
             raise ValueError(f"Unsupported period type: {self.period_type}")
 
+    @staticmethod
     @st.cache_data(ttl=86400)  # Cache for 24 hours
-    def _get_working_days_in_quarter(_self, year: int, quarter: int) -> int:
+    def _get_working_days_in_quarter(year: int, quarter: int) -> int:
         """Calculate the number of working days in a specific quarter."""
         start_month = (quarter - 1) * 3 + 1
         end_month = quarter * 3
@@ -110,7 +111,7 @@ class CapacityCalculator:
 
     @staticmethod
     @st.cache_data(ttl=86400)  # Cache for 24 hours
-    def _count_working_days(start_date: datetime.date, end_date: datetime.date) -> int:
+    def _count_working_days(start_date: date, end_date: date) -> int:
         """Count working days between two dates (inclusive)."""
         working_days = 0
         current_date = start_date
@@ -120,7 +121,7 @@ class CapacityCalculator:
             current_date += timedelta(days=1)
         return working_days
 
-    def get_period_identifier(self, date_obj: datetime.date) -> str:
+    def get_period_identifier(self, date_obj: date) -> str:
         """Get the period identifier string for a given date.
 
         Args:
@@ -136,7 +137,7 @@ class CapacityCalculator:
         else:
             raise ValueError(f"Unsupported period type: {self.period_type}")
 
-    def get_period_info(self, date_obj: datetime.date) -> Tuple[str, int, float]:
+    def get_period_info(self, date_obj: date) -> Tuple[str, int, float]:
         """Get period information including capacity per working day.
 
         Args:
@@ -153,13 +154,13 @@ class CapacityCalculator:
             raise ValueError(f"Unsupported period type: {self.period_type}")
 
     # Using a regular method instead of cached method to ensure capacity overrides are applied
-    def _get_quarter_info(self, date_obj: datetime.date) -> Tuple[str, int, float]:
+    def _get_quarter_info(self, date_obj: date) -> Tuple[str, int, float]:
         """Get quarter information including capacity per working day."""
         quarter_str = get_quarter_from_date(date_obj)
         year = date_obj.year
         quarter = (date_obj.month - 1) // 3 + 1
 
-        working_days = self._get_working_days_in_quarter(year, quarter)
+        working_days = CapacityCalculator._get_working_days_in_quarter(year, quarter)
 
         # Check for capacity override
         capacity_per_period = self._capacity_overrides.get(quarter_str, self.config.simulation.default_capacity_per_quarter)
@@ -168,7 +169,7 @@ class CapacityCalculator:
 
         return quarter_str, working_days, capacity_per_working_day
 
-    def _get_month_info(self, date_obj: datetime.date) -> Tuple[str, int, float]:
+    def _get_month_info(self, date_obj: date) -> Tuple[str, int, float]:
         """Get month information including capacity per working day."""
         month_str = f"{date_obj.year}-{date_obj.month:02d}"
         year = date_obj.year
@@ -186,7 +187,7 @@ class CapacityCalculator:
 
         return month_str, working_days, capacity_per_working_day
 
-    def get_remaining_working_days_in_period(self, date_obj: datetime.date) -> int:
+    def get_remaining_working_days_in_period(self, date_obj: date) -> int:
         """Calculate the number of remaining working days in the period from a given date.
 
         Args:
@@ -202,7 +203,7 @@ class CapacityCalculator:
         else:
             raise ValueError(f"Unsupported period type: {self.period_type}")
 
-    def _get_remaining_working_days_in_quarter(self, date_obj: datetime.date) -> int:
+    def _get_remaining_working_days_in_quarter(self, date_obj: date) -> int:
         """Calculate the number of remaining working days in the quarter from a given date."""
         year = date_obj.year
         quarter = (date_obj.month - 1) // 3 + 1
@@ -216,7 +217,7 @@ class CapacityCalculator:
 
         return self._count_working_days(date_obj, end_date)
 
-    def _get_remaining_working_days_in_month(self, date_obj: datetime.date) -> int:
+    def _get_remaining_working_days_in_month(self, date_obj: date) -> int:
         """Calculate the number of remaining working days in the month from a given date."""
         year = date_obj.year
         month = date_obj.month
@@ -229,7 +230,7 @@ class CapacityCalculator:
 
         return self._count_working_days(date_obj, end_date)
 
-    def calculate_remaining_capacity(self, start_date: datetime.date, capacity_per_period: float) -> Tuple[str, float]:
+    def calculate_remaining_capacity(self, start_date: date, capacity_per_period: float) -> Tuple[str, float]:
         """Calculate the remaining capacity in the period starting from a given date.
 
         Args:
