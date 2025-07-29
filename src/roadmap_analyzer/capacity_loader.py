@@ -10,6 +10,7 @@ from typing import Dict, Tuple
 import pandas as pd
 
 from roadmap_analyzer.capacity import TimePeriodType
+from roadmap_analyzer.loader_utils import create_column_mapping, find_sheet_name_case_insensitive
 
 
 def parse_period(period_str: str) -> Tuple[int, int, TimePeriodType]:
@@ -76,19 +77,33 @@ def load_capacity_data(file_path: str, sheet_name: str = "Capacity") -> Dict[str
         Dictionary mapping period strings to capacity values
     """
     try:
-        # Try to read the capacity sheet
-        df = pd.read_excel(file_path, sheet_name=sheet_name)
-
-        # Check if required columns exist
-        if "Period" not in df.columns or "Capacity" not in df.columns:
+        # Check if the Excel file has a Capacity tab (case-insensitive)
+        excel_file = pd.ExcelFile(file_path)
+        capacity_sheet = find_sheet_name_case_insensitive(excel_file.sheet_names, sheet_name)
+        if not capacity_sheet:
+            # No Capacity tab, return empty dict silently
             return {}
+
+        # Try to read the capacity sheet
+        df = pd.read_excel(file_path, sheet_name=capacity_sheet)
+
+        # Create case-insensitive column mapping
+        column_mapping = create_column_mapping(df.columns)
+
+        # Check if required columns exist (case-insensitive)
+        if "period" not in column_mapping or "capacity" not in column_mapping:
+            return {}
+
+        # Get actual column names
+        period_col = column_mapping["period"]
+        capacity_col = column_mapping["capacity"]
 
         # Create a dictionary of period -> capacity
         capacity_dict = {}
         for _, row in df.iterrows():
             try:
-                period_str = str(row["Period"])
-                capacity = float(row["Capacity"])
+                period_str = str(row[period_col])
+                capacity = float(row[capacity_col])
 
                 # Parse and validate the period format
                 year, period, period_type = parse_period(period_str)

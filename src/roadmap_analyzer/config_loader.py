@@ -7,6 +7,7 @@ import streamlit as st
 
 from roadmap_analyzer.components import add_notification
 from roadmap_analyzer.config import AppConfig
+from roadmap_analyzer.loader_utils import create_column_mapping, find_sheet_name_case_insensitive
 
 
 def load_config_from_excel(file_path: str, app_config: AppConfig) -> Optional[Dict[str, Any]]:
@@ -20,25 +21,33 @@ def load_config_from_excel(file_path: str, app_config: AppConfig) -> Optional[Di
         Optional[Dict[str, Any]]: Dictionary of configuration values if successful, None otherwise
     """
     try:
-        # Check if the Excel file has a Config tab
+        # Check if the Excel file has a Config tab (case-insensitive)
         excel_file = pd.ExcelFile(file_path)
-        if "Config" not in excel_file.sheet_names:
+        config_sheet = find_sheet_name_case_insensitive(excel_file.sheet_names, "Config")
+        if not config_sheet:
             # No Config tab, return None silently (no warning needed)
             return None
 
         # Read the Config tab
-        df = pd.read_excel(file_path, sheet_name="Config")
+        df = pd.read_excel(file_path, sheet_name=config_sheet)
 
-        # Check if the required columns exist
-        if "Config" not in df.columns or "Value" not in df.columns:
+        # Create case-insensitive column mapping
+        column_mapping = create_column_mapping(df.columns)
+
+        # Check if the required columns exist (case-insensitive)
+        if "config" not in column_mapping or "value" not in column_mapping:
             add_notification("⚠️ Config tab found but missing required columns (Config, Value)", "warning")
             return None
+
+        # Get actual column names
+        config_col = column_mapping["config"]
+        value_col = column_mapping["value"]
 
         # Extract configuration values
         config_dict = {}
         for _, row in df.iterrows():
-            config_name = row["Config"]
-            config_value = row["Value"]
+            config_name = row[config_col]
+            config_value = row[value_col]
 
             # Skip rows with empty config names
             if pd.isna(config_name) or not config_name:

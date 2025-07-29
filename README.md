@@ -40,24 +40,12 @@ uv run -m streamlit run src/roadmap_analyzer/main.py
 
 The application accepts Excel files with specific sheets and column formats:
 
-- **Data Sheet**: Contains work items, dependencies, effort estimates, and optional start dates
+- **Data Sheet**: Contains work items, dependencies, effort estimates, and optional start/due dates
 - **Config Sheet**: Contains simulation configuration parameters
 - **Capacity Sheet** (Optional): Contains period-specific capacity values for variable capacity planning
   - Supports quarterly format: `2025.Q1`, `2025.Q2`, etc.
   - Supports monthly format: `2025.1`, `2025.2`, etc.
   - If omitted, uses fixed capacity from the default configuration
-
-### Work Item Start Dates
-
-Work items can optionally specify a "Start date" column in the Data Sheet to define when a task cannot start before a certain date:
-
-- **Optional Field**: If no start date is specified, the work item can start as soon as dependencies are complete
-- **Constraint Enforcement**: Work items will not start before their specified start date, even if dependencies are complete earlier
-- **Dependency Integration**: When both dependencies and start dates exist, the simulation uses the later of:
-  - Dependency completion date
-  - Work item start date
-- **Working Day Adjustment**: Start dates are automatically adjusted to the next working day (Monday-Friday) if they fall on weekends
-- **Visualization**: Start dates appear as green diamond markers in the Gantt chart and are displayed in the statistics table
 
 For detailed information about the Excel file format, see [Excel Format Documentation](docs/excel_format.md).
 
