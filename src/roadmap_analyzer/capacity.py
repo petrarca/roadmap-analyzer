@@ -6,9 +6,8 @@ This module provides flexible capacity calculations that can work with different
 
 from datetime import date, datetime, timedelta
 from enum import Enum
+from functools import lru_cache
 from typing import Dict, Optional, Tuple, Union
-
-import streamlit as st
 
 from roadmap_analyzer.config import AppConfig
 from roadmap_analyzer.utils import get_quarter_from_date, is_working_day
@@ -85,7 +84,7 @@ class CapacityCalculator:
             raise ValueError(f"Unsupported period type: {self.period_type}")
 
     @staticmethod
-    @st.cache_data(ttl=86400)  # Cache for 24 hours
+    @lru_cache(maxsize=128)
     def _get_working_days_in_quarter(year: int, quarter: int) -> int:
         """Calculate the number of working days in a specific quarter."""
         start_month = (quarter - 1) * 3 + 1
@@ -110,7 +109,7 @@ class CapacityCalculator:
         return self._count_working_days(start_date, end_date)
 
     @staticmethod
-    @st.cache_data(ttl=86400)  # Cache for 24 hours
+    @lru_cache(maxsize=128)
     def _count_working_days(start_date: date, end_date: date) -> int:
         """Count working days between two dates (inclusive)."""
         working_days = 0
