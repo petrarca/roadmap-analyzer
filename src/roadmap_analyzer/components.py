@@ -108,7 +108,17 @@ def show_welcome_screen():
         )
         # Use centralized function to ensure PyArrow compatibility
         example_df = prepare_dataframe_for_display(example_df)
-        st.dataframe(example_df, hide_index=True)
+
+        # Apply styling to increase font size
+        styled_example_df = example_df.style.set_table_styles(
+            [
+                {"selector": "th", "props": [("font-size", "16px"), ("font-weight", "bold")]},
+                {"selector": "td", "props": [("font-size", "16px")]},
+                {"selector": "table", "props": [("font-size", "16px")]},
+            ]
+        )
+
+        st.dataframe(styled_example_df, hide_index=True)
 
 
 def display_data_tab(work_items):
@@ -184,10 +194,20 @@ def display_data_tab(work_items):
             }
         )
 
-    # Create and display DataFrame
+    # Create and display DataFrame with larger font size
     df = pd.DataFrame(data)
     df = prepare_dataframe_for_display(df)
-    st.dataframe(df, use_container_width=True, hide_index=True)
+
+    # Apply styling to increase font size
+    styled_df = df.style.set_table_styles(
+        [
+            {"selector": "th", "props": [("font-size", "16px"), ("font-weight", "bold")]},
+            {"selector": "td", "props": [("font-size", "16px")]},
+            {"selector": "table", "props": [("font-size", "16px")]},
+        ]
+    )
+
+    st.dataframe(styled_df, use_container_width=True, hide_index=True)
 
     # No duplicate summary stats at the bottom
 

@@ -37,23 +37,198 @@ APP_CONFIG: AppConfig = load_config()
 # Page configuration using config model
 st.set_page_config(page_title=APP_CONFIG.ui.page_title, page_icon=APP_CONFIG.ui.page_icon, layout=APP_CONFIG.ui.layout)
 
-# Add custom CSS to reduce the font size of metric values
+# Add custom CSS for professional styling
 st.markdown(
     """
 <style>
-    /* Reduce the font size of metric values */
+    /* Import professional fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    /* Global font styling */
+    .stApp {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    }
+    
+    /* Main title styling */
+    .main .block-container {
+        padding-top: 2rem;
+    }
+    
+    /* Metric styling */
     [data-testid="stMetricValue"] {
-        font-size: 1.5rem !important;
+        font-size: 1.75rem !important;
+        font-weight: 600 !important;
+        color: #1f2937 !important;
+        line-height: 1.2 !important;
     }
     
-    /* Also reduce the font size of metric labels */
     [data-testid="stMetricLabel"] {
-        font-size: 0.9rem !important;
+        font-size: 0.875rem !important;
+        font-weight: 500 !important;
+        color: #6b7280 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
     
-    /* Adjust the delta value size */
     [data-testid="stMetricDelta"] {
-        font-size: 0.9rem !important;
+        font-size: 0.875rem !important;
+        font-weight: 500 !important;
+    }
+    
+    /* Tab styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 4px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        height: 40px;
+        padding: 8px 16px;
+        font-weight: 500;
+        font-size: 0.875rem;
+        border-radius: 6px 6px 0 0;
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background-color: #ffffff !important;
+        color: #1e293b !important;
+        border-bottom: 2px solid #3b82f6 !important;
+    }
+    
+    /* Comprehensive table font size styling with high specificity */
+    
+    /* All Streamlit dataframes and tables */
+    .stDataFrame, .stTable {
+        font-size: 18px !important;
+    }
+    
+    .stDataFrame table, .stTable table {
+        font-size: 18px !important;
+    }
+    
+    .stDataFrame tbody tr td, .stTable tbody tr td {
+        font-size: 18px !important;
+        color: #1f2937 !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+    }
+    
+    .stDataFrame thead tr th, .stTable thead tr th {
+        font-size: 17px !important;
+        background-color: #f8fafc !important;
+        color: #374151 !important;
+        font-weight: 600 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 2px solid #e2e8f0 !important;
+    }
+    
+    /* Additional selectors for maximum coverage */
+    div[data-testid="stDataFrame"] table {
+        font-size: 18px !important;
+    }
+    
+    div[data-testid="stDataFrame"] td, 
+    div[data-testid="stDataFrame"] th {
+        font-size: 18px !important;
+    }
+    
+    /* Force font size on all table elements */
+    .dataframe, .dataframe td, .dataframe th {
+        font-size: 18px !important;
+    }
+    
+    /* Streamlit's internal table classes */
+    .element-container table {
+        font-size: 18px !important;
+    }
+    
+    .element-container td, .element-container th {
+        font-size: 18px !important;
+    }
+    
+    /* General table styling */
+    .stDataFrame {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    /* Sidebar styling */
+    .css-1d391kg {
+        background-color: #f8fafc;
+    }
+    
+    /* Button styling */
+    .stButton > button {
+        font-weight: 500;
+        border-radius: 6px;
+        border: 1px solid #d1d5db;
+        transition: all 0.2s ease;
+    }
+    
+    .stButton > button:hover {
+        border-color: #9ca3af;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .stButton > button[kind="primary"] {
+        background-color: #3b82f6;
+        border-color: #3b82f6;
+        font-weight: 600;
+    }
+    
+    .stButton > button[kind="primary"]:hover {
+        background-color: #2563eb;
+        border-color: #2563eb;
+    }
+    
+    /* Subheader styling */
+    .stApp h2 {
+        color: #1e293b;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 0.5rem;
+    }
+    
+    .stApp h3 {
+        color: #374151;
+        font-weight: 500;
+        margin-bottom: 0.75rem;
+    }
+    
+    /* Info/warning/error message styling */
+    .stAlert {
+        border-radius: 8px;
+        border-left: 4px solid;
+        font-weight: 500;
+    }
+    
+    /* File uploader styling */
+    .stFileUploader {
+        border: 2px dashed #d1d5db;
+        border-radius: 8px;
+        padding: 1rem;
+        background-color: #f9fafb;
+    }
+    
+    /* Progress bar styling */
+    .stProgress .st-bo {
+        background-color: #e5e7eb;
+        border-radius: 4px;
+    }
+    
+    .stProgress .st-bp {
+        background-color: #3b82f6;
+        border-radius: 4px;
     }
 </style>
 """,
@@ -125,7 +300,7 @@ def main():
     file_path = ""
 
     # Add title to sidebar before file uploader
-    st.sidebar.title("📊 Project Roadmap Monte Carlo Analysis")
+    st.sidebar.title("Project Roadmap Monte Carlo Analysis")
 
     uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx", "xls"])
 
@@ -173,7 +348,7 @@ def main():
     capacity_dict = load_capacity_data(file_path)
 
     # Create main tabs for data view, capacity view, simulation view, and status
-    data_tab, capacity_tab, simulation_tab, status_tab = st.tabs(["📋 Roadmap data", "⚡ Capacity data", "📊 Simulation results", "📝 Status"])
+    data_tab, capacity_tab, simulation_tab, status_tab = st.tabs(["Roadmap Data", "Capacity Data", "Simulation Results", "Status"])
 
     # Data tab content
     with data_tab:
@@ -181,7 +356,7 @@ def main():
 
     # Capacity tab content
     with capacity_tab:
-        st.subheader("⚡ Capacity Planning")
+        st.subheader("Capacity Planning")
 
         # Create capacity dataframe for visualization
         period_type = TimePeriodType.MONTHLY if time_period_type == "monthly" else TimePeriodType.QUARTERLY
@@ -210,7 +385,17 @@ def main():
             display_df.columns = ["Period", "Capacity (PD)"]
             # Format capacity numbers with locale-aware thousand separators
             display_df["Capacity (PD)"] = display_df["Capacity (PD)"].apply(lambda x: format_number(x))
-            st.dataframe(display_df, use_container_width=True)
+
+            # Apply styling to increase font size
+            styled_capacity_df = display_df.style.set_table_styles(
+                [
+                    {"selector": "th", "props": [("font-size", "16px"), ("font-weight", "bold")]},
+                    {"selector": "td", "props": [("font-size", "16px")]},
+                    {"selector": "table", "props": [("font-size", "16px")]},
+                ]
+            )
+
+            st.dataframe(styled_capacity_df, use_container_width=True)
 
     # Status tab content
     with status_tab:
@@ -234,7 +419,7 @@ def main():
             display_simulation_metrics(stats)
 
             # Visualizations
-            st.subheader("📊 Visualizations")
+            st.subheader("Visualizations")
 
             viz_tab1, viz_tab2, viz_tab3 = st.tabs(["Timeline View", "Probability Chart", "Detailed Statistics"])
 
@@ -250,6 +435,15 @@ def main():
             with viz_tab3:
                 # Detailed statistics table in its own tab
                 display_detailed_statistics(stats)
+        else:
+            # Show informational message when no simulation results are available
+            st.info(
+                "📊 **No simulation results available**\n\n"
+                "To view simulation results and visualizations:\n"
+                "1. Configure your simulation parameters in the sidebar\n"
+                "2. Click the **'Run Simulation'** button\n\n"
+                "Results will include timeline projections, probability charts, and detailed statistics."
+            )
 
 
 if __name__ == "__main__":
