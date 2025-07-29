@@ -31,7 +31,7 @@ def create_gantt_chart(stats, work_items):
 
     sorted_projects = sorted(stats.items(), key=lambda x: get_position(x[0]))
 
-    # Reverse the order to match the data table (C1 at the top)
+    # Reverse the order to match the data table
     sorted_projects = list(reversed(sorted_projects))
 
     for idx, (project_name, project_stats) in enumerate(sorted_projects):

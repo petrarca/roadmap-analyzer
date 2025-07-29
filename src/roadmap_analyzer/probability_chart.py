@@ -93,7 +93,7 @@ def create_probability_chart(stats):
             dtick="M1",  # Display ticks every month
             ticklabelmode="period",  # Show labels at the period boundaries
             # Start with autorange enabled
-            autorange=True
+            autorange=True,
         ),
         yaxis=dict(
             title="On-Time Probability (%)",

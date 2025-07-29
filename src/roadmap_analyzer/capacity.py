@@ -6,8 +6,9 @@ This module provides flexible capacity calculations that can work with different
 
 from datetime import date, datetime, timedelta
 from enum import Enum
-from functools import lru_cache
 from typing import Dict, Tuple
+
+import streamlit as st
 
 from roadmap_analyzer.config import AppConfig
 from roadmap_analyzer.utils import get_quarter_from_date, is_working_day
@@ -83,8 +84,8 @@ class CapacityCalculator:
         else:
             raise ValueError(f"Unsupported period type: {self.period_type}")
 
-    @lru_cache(maxsize=100)
-    def _get_working_days_in_quarter(self, year: int, quarter: int) -> int:
+    @st.cache_data(ttl=86400)  # Cache for 24 hours
+    def _get_working_days_in_quarter(_self, year: int, quarter: int) -> int:
         """Calculate the number of working days in a specific quarter."""
         start_month = (quarter - 1) * 3 + 1
         end_month = quarter * 3
@@ -95,7 +96,7 @@ class CapacityCalculator:
         else:
             end_date = datetime(year, end_month + 1, 1).date() - timedelta(days=1)
 
-        return self._count_working_days(start_date, end_date)
+        return CapacityCalculator._count_working_days(start_date, end_date)
 
     def _get_working_days_in_month(self, year: int, month: int) -> int:
         """Calculate the number of working days in a specific month."""
@@ -108,7 +109,7 @@ class CapacityCalculator:
         return self._count_working_days(start_date, end_date)
 
     @staticmethod
-    @lru_cache(maxsize=1000)
+    @st.cache_data(ttl=86400)  # Cache for 24 hours
     def _count_working_days(start_date: datetime.date, end_date: datetime.date) -> int:
         """Count working days between two dates (inclusive)."""
         working_days = 0
@@ -151,7 +152,7 @@ class CapacityCalculator:
         else:
             raise ValueError(f"Unsupported period type: {self.period_type}")
 
-    @lru_cache(maxsize=100)
+    # Using a regular method instead of cached method to ensure capacity overrides are applied
     def _get_quarter_info(self, date_obj: datetime.date) -> Tuple[str, int, float]:
         """Get quarter information including capacity per working day."""
         quarter_str = get_quarter_from_date(date_obj)

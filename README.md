@@ -42,9 +42,14 @@ The application accepts Excel files with specific sheets and column formats:
 
 - **Data Sheet**: Contains work items, dependencies, and effort estimates
 - **Config Sheet**: Contains simulation configuration parameters
-- **Capacity Sheet**: Contains period-specific capacity values
+- **Capacity Sheet** (Optional): Contains period-specific capacity values for variable capacity planning
+  - Supports quarterly format: `2025.Q1`, `2025.Q2`, etc.
+  - Supports monthly format: `2025.1`, `2025.2`, etc.
+  - If omitted, uses fixed capacity from the default configuration
 
 For detailed information about the Excel file format, see [Excel Format Documentation](docs/excel_format.md).
+
+For comprehensive guidance on using variable capacity features, see [Variable Capacity Documentation](docs/variable_capacity.md).
 
 ## Examples
 
@@ -55,10 +60,31 @@ The project includes an `examples` directory containing sample data files and us
 The application uses Monte Carlo simulation to predict project completion dates based on effort estimates and capacity constraints. Key principles include:
 
 - **Working Days**: Only weekdays (Monday-Friday) are considered working days
-- **Capacity Management**: Capacity is evenly distributed across working days in a quarter
+- **Flexible Capacity Management**: Supports both quarterly and monthly capacity allocation with:
+  - **Fixed Capacity**: Uniform capacity across all periods using default values
+  - **Variable Capacity**: Period-specific capacity values defined in Excel sheets
+  - **Even Distribution**: Capacity is evenly distributed across working days within each period
 - **Effort Distribution**: Uses triangular distribution (Best, Likely, Worst estimates)
 - **Dependencies**: Respects work item dependencies in scheduling
 - **Statistical Analysis**: Calculates P10, P50, P90 dates and on-time probabilities
+
+### Capacity Allocation Options
+
+The application provides flexible capacity management to accommodate different planning scenarios:
+
+1. **Time Period Flexibility**:
+   - **Quarterly**: Capacity allocated per quarter (e.g., Q1 2025, Q2 2025)
+   - **Monthly**: Capacity allocated per month for more granular control
+
+2. **Capacity Types**:
+   - **Fixed Capacity**: Use a single default capacity value for all periods
+   - **Variable Capacity**: Define specific capacity values for different periods to account for:
+     - Planned vacations or holidays
+     - Team size changes
+     - Part-time allocations to other projects
+     - Seasonal variations in workload
+
+3. **Fallback Mechanism**: When using variable capacity, any periods not explicitly defined automatically use the default capacity value, ensuring seamless simulation execution.
 
 ### Detailed Documentation
 

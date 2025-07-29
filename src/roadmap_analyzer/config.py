@@ -4,6 +4,8 @@ from typing import List
 
 from pydantic import BaseModel, ConfigDict, Field
 
+__all__ = ["AppConfig", "SimulationConfig", "UIConfig", "DataConfig", "load_config"]
+
 
 class SimulationConfig(BaseModel):
     """Configuration for Monte Carlo simulation with validation."""
@@ -40,14 +42,10 @@ class AppConfig(BaseModel):
     model_config = ConfigDict(validate_assignment=True, extra="forbid")
 
 
-# Global configuration instance with explicit type annotation
-APP_CONFIG: AppConfig = AppConfig()
-
-
 def load_config() -> AppConfig:
     """Load and return the application configuration.
 
     Returns:
         AppConfig: The application configuration instance
     """
-    return APP_CONFIG
+    return AppConfig()

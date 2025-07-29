@@ -14,7 +14,7 @@ from roadmap_analyzer.components import (
     display_status_tab,
     show_welcome_screen,
 )
-from roadmap_analyzer.config import load_config
+from roadmap_analyzer.config import AppConfig, load_config
 from roadmap_analyzer.config_loader import load_and_apply_config
 from roadmap_analyzer.data_loader import load_work_items
 from roadmap_analyzer.gantt_chart import create_gantt_chart
@@ -24,7 +24,7 @@ from roadmap_analyzer.statistics import display_detailed_statistics
 from roadmap_analyzer.utils import is_working_day
 
 # Load application configuration
-APP_CONFIG = load_config()
+APP_CONFIG: AppConfig = load_config()
 
 # Page configuration using config model
 st.set_page_config(page_title=APP_CONFIG.ui.page_title, page_icon=APP_CONFIG.ui.page_icon, layout=APP_CONFIG.ui.layout)
@@ -54,17 +54,6 @@ st.markdown(
 
 # Description in main area
 st.markdown("Analyze project timelines with Monte Carlo simulation to assess on-time delivery probabilities")
-
-# Command line arguments handling removed - not used in the application
-
-
-# DataFrame utilities for Streamlit display
-
-
-# Function create_work_items_display_dataframe removed - functionality is now handled by display_data_tab in components.py
-
-
-# Detailed statistics display moved to statistics.py
 
 
 def run_simulation_workflow(work_items, capacity_value, start_date, time_period_type, num_simulations, capacity_dict=None):
