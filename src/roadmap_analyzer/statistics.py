@@ -4,39 +4,43 @@ Contains functions for processing and displaying statistics.
 """
 
 from datetime import datetime
+from typing import Dict
 
 import pandas as pd
 import streamlit as st
 
+from .models import SimulationStats
 
-def _create_stats_dataframe(stats):
-    """Create a DataFrame from project statistics."""
+
+def _create_stats_dataframe(stats: Dict[str, SimulationStats]) -> pd.DataFrame:
+    """Create a DataFrame from roadmap statistics."""
     return pd.DataFrame(
         [
             {
-                "Project": project,
-                "Due Date": stats[project].due_date.strftime("%b %d, %Y"),
-                "Start P10": stats[project].start_p10.strftime("%b %d, %Y") if stats[project].start_p10 else "N/A",
-                "P10 (Best Case)": stats[project].p10.strftime("%b %d, %Y"),
-                "Start P50": stats[project].start_p50.strftime("%b %d, %Y") if stats[project].start_p50 else "N/A",
-                "P50 (Most Likely)": stats[project].p50.strftime("%b %d, %Y"),
-                "Start P90": stats[project].start_p90.strftime("%b %d, %Y") if stats[project].start_p90 else "N/A",
-                "P90 (Worst Case)": stats[project].p90.strftime("%b %d, %Y"),
-                "On-Time Probability": f"{stats[project].on_time_probability:.1f}%",
+                "Work Item": work_item,
+                "Start Date": stats[work_item].start_date.strftime("%b %d, %Y") if stats[work_item].start_date else "N/A",
+                "Due Date": stats[work_item].due_date.strftime("%b %d, %Y"),
+                "Start P10": stats[work_item].start_p10.strftime("%b %d, %Y") if stats[work_item].start_p10 else "N/A",
+                "P10 (Best Case)": stats[work_item].p10.strftime("%b %d, %Y"),
+                "Start P50": stats[work_item].start_p50.strftime("%b %d, %Y") if stats[work_item].start_p50 else "N/A",
+                "P50 (Most Likely)": stats[work_item].p50.strftime("%b %d, %Y"),
+                "Start P90": stats[work_item].start_p90.strftime("%b %d, %Y") if stats[work_item].start_p90 else "N/A",
+                "P90 (Worst Case)": stats[work_item].p90.strftime("%b %d, %Y"),
+                "On-Time Probability": f"{stats[work_item].on_time_probability:.1f}%",
             }
-            for project in stats
+            for work_item in stats
         ]
     )
 
 
-def _style_completion_date(val, date_val, due_date):
+def _style_completion_date(val: str, date_val: datetime, due_date: datetime) -> str:
     """Style completion date based on whether it's on time."""
     on_time = date_val <= due_date
     color = "#4CAF50" if on_time else "#FF7F7F"  # Green if on time, red if late
     return f'<span style="color: {color}; font-weight: bold;">{val}</span>'
 
 
-def _style_start_date(val, on_time):
+def _style_start_date(val: str, on_time: bool) -> str:
     """Style start date based on whether the completion is on time."""
     if val == "N/A":
         return val
@@ -44,7 +48,7 @@ def _style_start_date(val, on_time):
     return f'<span style="color: {color}; font-style: italic;">{val}</span>'
 
 
-def _style_probability(val):
+def _style_probability(val: str) -> str:
     """Style probability based on value."""
     prob_value = float(val.strip("%"))
     if prob_value >= 90:
@@ -55,23 +59,30 @@ def _style_probability(val):
         return f'<span style="color: #FF7F7F; font-weight: bold;">{val}</span>'  # Red and bold
 
 
-def _apply_styling(stats_df, stats):
+def _apply_styling(stats_df: pd.DataFrame, stats: Dict[str, SimulationStats]) -> pd.DataFrame:
     """Apply styling to the statistics DataFrame."""
     styled_df = stats_df.copy()
 
     for idx, row in styled_df.iterrows():
-        project = row["Project"]
-        due_date = stats[project].due_date
+        work_item = row["Work Item"]
+        due_date = stats[work_item].due_date
 
         # Check if completion dates are on time
-        p10_on_time = stats[project].p10 <= due_date
-        p50_on_time = stats[project].p50 <= due_date
-        p90_on_time = stats[project].p90 <= due_date
+        p10_on_time = stats[work_item].p10 <= due_date
+        p50_on_time = stats[work_item].p50 <= due_date
+        p90_on_time = stats[work_item].p90 <= due_date
 
         # Style completion dates
-        styled_df.at[idx, "P10 (Best Case)"] = _style_completion_date(row["P10 (Best Case)"], stats[project].p10, due_date)
-        styled_df.at[idx, "P50 (Most Likely)"] = _style_completion_date(row["P50 (Most Likely)"], stats[project].p50, due_date)
-        styled_df.at[idx, "P90 (Worst Case)"] = _style_completion_date(row["P90 (Worst Case)"], stats[project].p90, due_date)
+        styled_df.at[idx, "P10 (Best Case)"] = _style_completion_date(row["P10 (Best Case)"], stats[work_item].p10, due_date)
+        styled_df.at[idx, "P50 (Most Likely)"] = _style_completion_date(row["P50 (Most Likely)"], stats[work_item].p50, due_date)
+        styled_df.at[idx, "P90 (Worst Case)"] = _style_completion_date(row["P90 (Worst Case)"], stats[work_item].p90, due_date)
+
+        # Style start date
+        start_date_val = row["Start Date"]
+        if start_date_val == "N/A":
+            styled_df.at[idx, "Start Date"] = f'<span style="color: #888888; font-style: italic;">{start_date_val}</span>'
+        else:
+            styled_df.at[idx, "Start Date"] = f'<span style="color: #4CAF50; font-weight: bold;">{start_date_val}</span>'
 
         # Style start dates
         styled_df.at[idx, "Start P10"] = _style_start_date(row["Start P10"], p10_on_time)
@@ -84,7 +95,7 @@ def _apply_styling(stats_df, stats):
     return styled_df
 
 
-def _add_table_css():
+def _add_table_css() -> None:
     """Add CSS styling for the statistics table."""
     st.markdown(
         """
@@ -112,7 +123,7 @@ def _add_table_css():
     )
 
 
-def display_detailed_statistics(stats):
+def display_detailed_statistics(stats: Dict[str, SimulationStats]) -> None:
     """Display detailed statistics table with styling."""
     st.subheader("📈 Detailed Statistics")
 
@@ -131,6 +142,6 @@ def display_detailed_statistics(stats):
     st.download_button(
         label="Download Statistics as CSV",
         data=csv,
-        file_name=f"project_statistics_{datetime.now().strftime('%Y%m%d')}.csv",
+        file_name=f"roadmap_statistics_{datetime.now().strftime('%Y%m%d')}.csv",
         mime="text/csv",
     )

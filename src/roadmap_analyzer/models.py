@@ -120,6 +120,7 @@ class SimulationStats(BaseModel):
     """Statistics for a single work item across all simulation runs."""
 
     position: int = Field(..., description="Position/ID of the work item")
+    start_date: Optional[datetime] = Field(None, description="Optional start date defined in work item")
     due_date: datetime = Field(..., description="Target due date")
     on_time_probability: float = Field(..., description="Probability of on-time completion (percentage)")
     p10: datetime = Field(..., description="P10 (optimistic) completion date")

@@ -31,7 +31,9 @@ The simulation follows these fundamental principles:
 
 4. **Dependencies**: Work items can depend on other work items, meaning they can only start after their dependencies are completed.
 
-5. **Capacity Constraints**: The simulation respects capacity constraints, ensuring that work is only performed when capacity is available.
+5. **Start Date Constraints**: Work items can optionally specify a start date, creating a constraint that prevents the item from starting before that date, even if dependencies are complete earlier.
+
+6. **Capacity Constraints**: The simulation respects capacity constraints, ensuring that work is only performed when capacity is available.
 
 ## Simulation Process
 
@@ -78,14 +80,19 @@ Date calculations follow these rules:
 
 1. **Project Start Date**: Must be a working day. If a weekend is provided, it's adjusted to the next working day.
 
-2. **Dependency Start Dates**: When a work item depends on another, its start date is the completion date of the dependency.
+2. **Work Item Start Dates**: Work items can optionally specify a start date constraint. When both dependencies and start dates exist, the simulation uses the **later** of:
+   - The completion date of all dependencies
+   - The work item's specified start date
+   - Start dates are automatically adjusted to the next working day if they fall on weekends
 
-3. **Completion Date Calculation**: 
+3. **Dependency Start Dates**: When a work item depends on another, its start date is the completion date of the dependency (unless overridden by a later start date constraint).
+
+4. **Completion Date Calculation**: 
    - Calculate how much effort can be completed with the available capacity
    - Determine how many working days this corresponds to
    - Add these working days to the start date
 
-4. **Working Days Only**: When adding days to dates, weekends are skipped.
+5. **Working Days Only**: When adding days to dates, weekends are skipped.
 
 ## Statistical Analysis
 

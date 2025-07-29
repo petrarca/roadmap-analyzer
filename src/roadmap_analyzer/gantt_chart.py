@@ -108,6 +108,35 @@ def create_gantt_chart(stats, work_items):
             )
         )
 
+        # Find the corresponding work item to check for start date
+        work_item = next((item for item in work_items if item.item == project_name), None)
+        if work_item and work_item.start_date:
+            # Start date marker - make it prominent with green color
+            fig.add_trace(
+                go.Scatter(
+                    x=[work_item.start_date],
+                    y=[y_pos],
+                    mode="markers",
+                    marker=dict(symbol="diamond", size=12, color="green", line=dict(color="darkgreen", width=2)),
+                    name="Start Date",
+                    showlegend=(idx == 0),
+                    hovertemplate=f"{project_name}<br>Start Date: %{{x|%b %d, %Y}}<extra></extra>",
+                )
+            )
+
+            # Add vertical line for start date to make it even more visible
+            fig.add_trace(
+                go.Scatter(
+                    x=[work_item.start_date, work_item.start_date],
+                    y=[y_pos - 0.3, y_pos + 0.3],
+                    mode="lines",
+                    line=dict(color="green", width=3, dash="dash"),
+                    name="Start Date Line",
+                    showlegend=False,
+                    hovertemplate=f"{project_name}<br>Start Date: %{{x[0]|%b %d, %Y}}<extra></extra>",
+                )
+            )
+
     fig.update_layout(
         title="Project timeline with confidence intervals",
         xaxis_title="Date",

@@ -4,7 +4,7 @@ tasks:
   setup:
     desc: Create a Python virtual environment
     cmds:
-      - uv venv
+      - if [ ! -d .venv ]; then uv venv; fi
 
   install:
     desc: Install the package in development mode
@@ -51,3 +51,26 @@ tasks:
       - task: format
       - task: check
       - task: test
+
+  pre-commit-install:
+    desc: Install pre-commit hooks
+    deps: [install]
+    cmds:
+      - .venv/bin/pre-commit install
+      - .venv/bin/pre-commit install --hook-type pre-push
+
+  pre-commit-run:
+    desc: Run pre-commit hooks on all files
+    cmds:
+      - .venv/bin/pre-commit run --all-files
+
+  pre-commit-update:
+    desc: Update pre-commit hooks
+    cmds:
+      - .venv/bin/pre-commit autoupdate
+
+  pre-commit-uninstall:
+    desc: Remove pre-commit hooks
+    cmds:
+      - .venv/bin/pre-commit uninstall
+      - .venv/bin/pre-commit uninstall --hook-type pre-push

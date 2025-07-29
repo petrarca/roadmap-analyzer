@@ -36,6 +36,43 @@ The Data sheet contains your work items and their effort estimates. This sheet i
 | 2 | Feature B | 2025-07-31 | 1 | 80 | 100 | 130 | Medium | |
 | 3 | Feature C | 2025-08-31 | | 200 | 250 | 300 | Low | 2025-07-01 |
 
+### Start Date Column Details
+
+The **Start date** column allows you to specify when a work item cannot start before a certain date. This is useful for:
+
+- **Resource Availability**: When team members or resources become available on specific dates
+- **External Dependencies**: When waiting for external deliverables or approvals
+- **Business Constraints**: When features must align with marketing campaigns or product launches
+- **Regulatory Requirements**: When compliance or legal requirements dictate timing
+
+#### How Start Dates Work
+
+1. **Optional Constraint**: If no start date is specified (empty cell), the work item can start as soon as its dependencies are complete
+
+2. **Constraint Enforcement**: Work items will never start before their specified start date, even if dependencies are complete earlier
+
+3. **Dependency Integration**: When both dependencies and start dates exist, the simulation uses the **later** of:
+   - The completion date of all dependencies
+   - The work item's start date
+
+4. **Working Day Adjustment**: Start dates are automatically adjusted to the next working day (Monday-Friday) if they fall on weekends
+
+5. **Visualization**: 
+   - Start dates appear as **green diamond markers** with dashed lines in the Gantt chart
+   - Due dates appear as **blue diamond markers** with dashed lines
+   - The **Statistics table** displays the original start date for each work item
+
+#### Example Scenarios
+
+**Scenario 1**: Feature C has a start date of 2025-07-01 but no dependencies
+- Result: Feature C will start on 2025-07-01 (or next working day) regardless of project start date
+
+**Scenario 2**: Feature B depends on Feature A (completed 2025-06-15) and has start date 2025-07-01
+- Result: Feature B will start on 2025-07-01 since it's later than the dependency completion
+
+**Scenario 3**: Feature D depends on Feature A (completed 2025-08-01) and has start date 2025-07-01
+- Result: Feature D will start on 2025-08-01 since the dependency completion is later than the start date
+
 ## Config Sheet
 
 The Config sheet contains simulation configuration parameters. This sheet is optional.

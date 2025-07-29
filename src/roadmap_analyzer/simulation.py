@@ -104,7 +104,7 @@ class SimulationEngine:
         )
 
     def _determine_start_date(self, work_item: WorkItem, default_start_date: datetime.date) -> datetime.date:
-        """Determine the start date for a work item considering dependencies.
+        """Determine the start date for a work item considering dependencies and optional start date.
 
         Args:
             work_item: The work item to determine start date for
@@ -115,11 +115,19 @@ class SimulationEngine:
         """
         project_start_date = default_start_date
 
+        # Consider dependency completion date
         if work_item.has_dependency:
             dep_completion = self.completion_dates.get(work_item.dependency)
             if dep_completion and dep_completion > project_start_date:
                 # Ensure the dependency completion date is a working day
                 project_start_date = self.ensure_working_day(dep_completion)
+
+        # Consider the work item's optional start date
+        if work_item.start_date:
+            work_item_start = convert_to_date(work_item.start_date)
+            # Take the later of dependency completion and work item start date
+            if work_item_start > project_start_date:
+                project_start_date = self.ensure_working_day(work_item_start)
 
         return project_start_date
 
@@ -415,12 +423,13 @@ class SimulationEngine:
                 best_effort=work_items[idx].best_estimate,
                 likely_effort=work_items[idx].most_likely_estimate,
                 worst_effort=work_items[idx].worst_estimate,
+                start_date=work_items[idx].start_date,
             )
 
         return stats
 
     def calculate_start_dates(self, stats: Dict[str, SimulationStats], work_items: List[WorkItem], project_start_date: datetime.date) -> None:
-        """Calculate start dates for each project based on dependencies.
+        """Calculate start dates for each project based on dependencies and optional start dates.
 
         Args:
             stats: Dictionary of project statistics
@@ -430,37 +439,48 @@ class SimulationEngine:
         Note:
             This function modifies the stats dictionary in-place
         """
-        # First pass: set default start dates to the configured project start date
-        for project_name, project_stats in stats.items():
-            project_stats.start_p10 = project_start_date
-            project_stats.start_p50 = project_start_date
-            project_stats.start_p90 = project_start_date
-
         # Create a lookup dictionary for work items by position
         position_to_work_item = {item.position: item for item in work_items}
 
-        # Second pass: update start dates based on dependencies
+        # Calculate start dates for each project
         for project_name, project_stats in stats.items():
             # Find the work item for this project
             work_item = next((item for item in work_items if item.item == project_name), None)
-            if not work_item or not work_item.has_dependency:
+            if not work_item:
+                # Fallback to project start date if work item not found
+                project_stats.start_p10 = project_start_date
+                project_stats.start_p50 = project_start_date
+                project_stats.start_p90 = project_start_date
                 continue
 
-            # Get the dependency position
-            dependency_position = work_item.dependency
+            # Start with project start date as baseline
+            start_p10 = project_start_date
+            start_p50 = project_start_date
+            start_p90 = project_start_date
 
-            # Find the dependent work item
-            dependent_work_item = position_to_work_item.get(dependency_position)
-            if not dependent_work_item:
-                continue
+            # Consider dependency completion dates
+            if work_item.has_dependency:
+                dependency_position = work_item.dependency
+                dependent_work_item = position_to_work_item.get(dependency_position)
 
-            # Get the dependent project name
-            dependent_project = dependent_work_item.item
-            if dependent_project not in stats:
-                continue
+                if dependent_work_item:
+                    dependent_project = dependent_work_item.item
+                    if dependent_project in stats:
+                        dep_stats = stats[dependent_project]
+                        # Use dependency completion dates as potential start dates
+                        start_p10 = max(start_p10, convert_to_date(dep_stats.p10))
+                        start_p50 = max(start_p50, convert_to_date(dep_stats.p50))
+                        start_p90 = max(start_p90, convert_to_date(dep_stats.p90))
 
-            # Start dates are the completion dates of the dependency
-            dep_stats = stats[dependent_project]
-            project_stats.start_p10 = convert_to_date(dep_stats.p10)
-            project_stats.start_p50 = convert_to_date(dep_stats.p50)
-            project_stats.start_p90 = convert_to_date(dep_stats.p90)
+            # Consider work item's optional start date
+            if work_item.start_date:
+                work_item_start = convert_to_date(work_item.start_date)
+                # Take the later of dependency completion and work item start date
+                start_p10 = max(start_p10, work_item_start)
+                start_p50 = max(start_p50, work_item_start)
+                start_p90 = max(start_p90, work_item_start)
+
+            # Ensure start dates are working days
+            project_stats.start_p10 = self.ensure_working_day(start_p10)
+            project_stats.start_p50 = self.ensure_working_day(start_p50)
+            project_stats.start_p90 = self.ensure_working_day(start_p90)

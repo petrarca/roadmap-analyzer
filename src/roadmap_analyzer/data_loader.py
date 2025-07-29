@@ -48,6 +48,10 @@ def load_project_data(file_path: str, config: AppConfig) -> pd.DataFrame:
         # Convert due dates to datetime
         df["Due date"] = pd.to_datetime(df["Due date"])
 
+        # Convert start dates to datetime if the column exists
+        if "Start date" in df.columns:
+            df["Start date"] = pd.to_datetime(df["Start date"], errors="coerce")
+
         # Clean up dependency column for PyArrow compatibility
         # Convert to nullable integer type to avoid mixed type issues
         df["Dependency"] = df["Dependency"].astype("Int64")  # Nullable integer type

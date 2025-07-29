@@ -4,7 +4,7 @@ from typing import List
 
 from pydantic import BaseModel, ConfigDict, Field
 
-__all__ = ["AppConfig", "SimulationConfig", "UIConfig", "DataConfig", "load_config"]
+__all__ = ["AppConfig", "SimulationConfig", "UIConfig", "DataConfig", "load_config", "APP_CONFIG"]
 
 
 class SimulationConfig(BaseModel):
@@ -42,10 +42,23 @@ class AppConfig(BaseModel):
     model_config = ConfigDict(validate_assignment=True, extra="forbid")
 
 
+# Global configuration instance
+_config_instance: AppConfig = None
+
+
 def load_config() -> AppConfig:
     """Load and return the application configuration.
+
+    Uses singleton pattern to ensure the same instance is returned on subsequent calls.
 
     Returns:
         AppConfig: The application configuration instance
     """
-    return AppConfig()
+    global _config_instance
+    if _config_instance is None:
+        _config_instance = AppConfig()
+    return _config_instance
+
+
+# Create the global APP_CONFIG instance
+APP_CONFIG = load_config()
