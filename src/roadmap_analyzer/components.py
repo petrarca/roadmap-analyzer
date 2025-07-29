@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import streamlit as st
 
-from roadmap_analyzer.utils import prepare_dataframe_for_display
+from roadmap_analyzer.utils import format_number, prepare_dataframe_for_display
 
 # Global list to store notifications - moved to function to ensure proper initialization
 
@@ -98,16 +98,17 @@ def show_welcome_screen():
             {
                 "Position": [1, 2, 3],
                 "Item": ["Project A", "Project B", "Project C"],
+                "Start date": ["01/02/2025", None, "15/03/2025"],
                 "Due date": ["30/11/2025", "30/11/2025", "30/05/2026"],
                 "Dependency": [None, 1, None],
-                "Best": [2400, 250, 1400],
-                "Likely": [2832, 295, 1652],
-                "Worst": [3120, 325, 1820],
+                "Best": [format_number(2400), format_number(250), format_number(1400)],
+                "Likely": [format_number(2832), format_number(295), format_number(1652)],
+                "Worst": [format_number(3120), format_number(325), format_number(1820)],
             }
         )
         # Use centralized function to ensure PyArrow compatibility
         example_df = prepare_dataframe_for_display(example_df)
-        st.dataframe(example_df)
+        st.dataframe(example_df, hide_index=True)
 
 
 def display_data_tab(work_items):
@@ -137,18 +138,18 @@ def display_data_tab(work_items):
         with row1_col1:
             st.metric("Work Items", len(work_items))
         with row1_col2:
-            st.metric("Avg. per Item", f"{avg_likely:,.0f} PD")
+            st.metric("Avg. per Item", f"{format_number(avg_likely)} PD")
         with row1_col3:
             st.metric("Uncertainty Ratio", f"{uncertainty_ratio:.2f}x")
 
         # Second row with estimates aligned
         row2_col1, row2_col2, row2_col3 = st.columns(3)
         with row2_col1:
-            st.metric("Best Estimate", f"{total_best:,.0f} PD")
+            st.metric("Best Estimate", f"{format_number(total_best)} PD")
         with row2_col2:
-            st.metric("Likely Estimate", f"{total_likely:,.0f} PD")
+            st.metric("Likely Estimate", f"{format_number(total_likely)} PD")
         with row2_col3:
-            st.metric("Worst Estimate", f"{total_worst:,.0f} PD")
+            st.metric("Worst Estimate", f"{format_number(total_worst)} PD")
 
         # Third row with largest and smallest items
         if largest_item and smallest_item:
@@ -157,12 +158,12 @@ def display_data_tab(work_items):
                 largest_name = largest_item.item
                 if len(largest_name) > 20:  # Truncate long names
                     largest_name = largest_name[:17] + "..."
-                st.metric("Largest Item", largest_name, f"{largest_item.most_likely_estimate:,.0f} PD")
+                st.metric("Largest Item", largest_name, f"{format_number(largest_item.most_likely_estimate)} PD")
             with row3_col2:
                 smallest_name = smallest_item.item
                 if len(smallest_name) > 20:  # Truncate long names
                     smallest_name = smallest_name[:17] + "..."
-                st.metric("Smallest Item", smallest_name, f"{smallest_item.most_likely_estimate:,.0f} PD")
+                st.metric("Smallest Item", smallest_name, f"{format_number(smallest_item.most_likely_estimate)} PD")
             # Empty third column for alignment
             with row3_col3:
                 pass
@@ -174,18 +175,19 @@ def display_data_tab(work_items):
             {
                 "Position": item.position,
                 "Item": item.item,
+                "Start Date": item.start_date.strftime("%d/%m/%Y") if item.start_date else None,
                 "Due Date": item.due_date.strftime("%d/%m/%Y") if item.due_date else "N/A",
                 "Dependency": item.dependency,
-                "Best (PD)": item.best_estimate,
-                "Likely (PD)": item.most_likely_estimate,
-                "Worst (PD)": item.worst_estimate,
+                "Best (PD)": format_number(item.best_estimate),
+                "Likely (PD)": format_number(item.most_likely_estimate),
+                "Worst (PD)": format_number(item.worst_estimate),
             }
         )
 
     # Create and display DataFrame
     df = pd.DataFrame(data)
     df = prepare_dataframe_for_display(df)
-    st.dataframe(df, use_container_width=True)
+    st.dataframe(df, use_container_width=True, hide_index=True)
 
     # No duplicate summary stats at the bottom
 

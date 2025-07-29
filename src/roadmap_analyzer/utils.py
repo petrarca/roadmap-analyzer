@@ -142,3 +142,17 @@ def prepare_dataframe_for_display(df):
                     pass
 
     return df_copy
+
+
+def format_number(value: Union[int, float]) -> str:
+    """Format a number with locale-aware thousand separators.
+
+    Args:
+        value: The numeric value to format
+
+    Returns:
+        Formatted string with locale-appropriate thousand separators
+    """
+    # Use :n format specifier for locale-aware number formatting
+    # This respects the locale settings initialized in main.py
+    return f"{int(value):n}"

@@ -1,6 +1,14 @@
+import locale
 from datetime import timedelta
 
 import streamlit as st
+
+# Initialize locale for number formatting
+try:
+    locale.setlocale(locale.LC_ALL, "")  # Use user's default locale
+except locale.Error:
+    # Fallback to C locale if user's locale is not available
+    locale.setlocale(locale.LC_ALL, "C")
 
 # Import custom modules
 from roadmap_analyzer.capacity import CapacityCalculator, TimePeriodType
@@ -21,7 +29,7 @@ from roadmap_analyzer.gantt_chart import create_gantt_chart
 from roadmap_analyzer.probability_chart import create_probability_chart
 from roadmap_analyzer.simulation import SimulationEngine
 from roadmap_analyzer.statistics import display_detailed_statistics
-from roadmap_analyzer.utils import is_working_day
+from roadmap_analyzer.utils import format_number, is_working_day
 
 # Load application configuration
 APP_CONFIG: AppConfig = load_config()
@@ -200,6 +208,8 @@ def main():
         if not capacity_df.empty:
             display_df = capacity_df[["DisplayPeriod", "Capacity"]].copy()
             display_df.columns = ["Period", "Capacity (PD)"]
+            # Format capacity numbers with locale-aware thousand separators
+            display_df["Capacity (PD)"] = display_df["Capacity (PD)"].apply(lambda x: format_number(x))
             st.dataframe(display_df, use_container_width=True)
 
     # Status tab content
