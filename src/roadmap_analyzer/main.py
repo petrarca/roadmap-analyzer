@@ -305,15 +305,18 @@ def main():
     uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx", "xls"])
 
     if uploaded_file:
-        # Clear notifications when loading a new file
+        # Clear notifications and simulation results when loading a new file
         # Initialize if needed
         if "notifications" not in st.session_state:
             st.session_state.notifications = []
         else:
             st.session_state.notifications = []
+            
+        # Clear simulation results when loading a new file
+        st.session_state.stats = None
 
         # Add initial notification about clearing
-        add_notification("Status messages cleared - loading new file", "info")
+        add_notification("Status messages and simulation results cleared - loading new file", "info")
 
         # Save the uploaded file to a temporary location and use that path
         import tempfile
@@ -437,13 +440,21 @@ def main():
                 display_detailed_statistics(stats)
         else:
             # Show informational message when no simulation results are available
-            st.info(
-                "📊 **No simulation results available**\n\n"
-                "To view simulation results and visualizations:\n"
-                "1. Configure your simulation parameters in the sidebar\n"
-                "2. Click the **'Run Simulation'** button\n\n"
-                "Results will include timeline projections, probability charts, and detailed statistics."
-            )
+            if uploaded_file and not run_simulation:
+                st.info(
+                    "📊 **New file loaded or parameters changed - Run simulation to see results**\n\n"
+                    "Your file has been loaded successfully, but simulation results need to be generated.\n"
+                    "Click the **'Run Simulation'** button in the sidebar to generate results.\n\n"
+                    "Results will include timeline projections, probability charts, and detailed statistics."
+                )
+            else:
+                st.info(
+                    "📊 **No simulation results available**\n\n"
+                    "To view simulation results and visualizations:\n"
+                    "1. Configure your simulation parameters in the sidebar\n"
+                    "2. Click the **'Run Simulation'** button\n\n"
+                    "Results will include timeline projections, probability charts, and detailed statistics."
+                )
 
 
 if __name__ == "__main__":
